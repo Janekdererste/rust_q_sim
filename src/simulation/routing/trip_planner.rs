@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use mpi::{topology::SystemCommunicator, Rank};
 
-use crate::simulation::{messaging::messages::proto::{Agent, Activity, Plan}, io::{network::IONetwork, vehicle_definitions::VehicleDefinitions}, id_mapping::MatsimIdMappings};
+use crate::simulation::{messaging::messages::proto::{Agent, Activity, Plan, Leg}, io::{network::IONetwork, vehicle_definitions::VehicleDefinitions}, id_mapping::MatsimIdMappings};
 
 use super::{road_router::RoadRouter, network_converter::NetworkConverter};
 
@@ -13,7 +13,15 @@ struct TripPlanner<'router> {
 struct Trip<'a> {
     start_act : &'a Activity,
     end_activity:  &'a Activity,
-    
+    legs: Vec<Leg>,
+    interactions: Vec<Activity>
+}
+
+struct RoutingRequest<'a> {
+    start_act: &'a Activity,
+    end_act: &'a Activity,
+    dep_time: u32,
+    agent: &'a Agent
 }
 
 impl<'router> TripPlanner<'router> {
@@ -54,11 +62,11 @@ impl<'router> TripPlanner<'router> {
         self.routers.get(mode).expect(format!("no router for mode {mode}").as_str())
     }
     
-    fn plan_next_trip(&self, agent: &mut Agent) {
+    fn plan_next_trip<'a>(&self, req: RoutingRequest<'a>) -> Trip<'a> {
         
-        let start_act = agent.curr_act();
-        let end_act = agent.next_main_act();
-        let next_leg = agent.next_leg();
+        let start_act = req.agent.curr_act();
+        let end_act = req.agent.next_main_act();
+        let next_leg = req.agent.next_leg();
         // in case of access-main-egress legs, this will yield the wrong mode. Let's get this right later and assume that all
         // trips are single legs before they are passed into the router.
         let router = self.get_router(&next_leg.mode);
