@@ -8,7 +8,10 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Layer;
 
-pub fn init_logging(directory: &str, file_discriminant: String) -> (WorkerGuard, WorkerGuard) {
+pub fn init_non_blocking_logging(
+    directory: &str,
+    file_discriminant: String,
+) -> (WorkerGuard, WorkerGuard) {
     let mut file_name = String::from("mpi_qsim_");
     file_name.push_str(file_discriminant.as_str());
 
@@ -41,4 +44,36 @@ pub fn init_logging(directory: &str, file_discriminant: String) -> (WorkerGuard,
         );
     tracing::subscriber::set_global_default(collector).expect("Unable to set a global collector");
     (_guard_log, _guard_performance)
+}
+
+pub fn init_blocking_logging(directory: &str, file_discriminant: String) {
+    let mut file_name = String::from("mpi_qsim_");
+    file_name.push_str(file_discriminant.as_str());
+
+    let log_file = rolling::never(directory, &file_name);
+
+    let mut performance_directory = String::from(directory);
+    performance_directory.push_str("/trace");
+
+    let performance_file = rolling::never(performance_directory, &file_name);
+
+    let collector = tracing_subscriber::registry()
+        .with(
+            fmt::Layer::new()
+                .with_writer(io::stdout)
+                .with_filter(LevelFilter::INFO),
+        )
+        .with(
+            fmt::Layer::new()
+                .with_writer(log_file)
+                .json()
+                .with_ansi(false)
+                .with_filter(LevelFilter::DEBUG),
+        )
+        .with(
+            fmt::Layer::new()
+                .with_writer(performance_file.with_min_level(Level::TRACE))
+                .json(),
+        );
+    tracing::subscriber::set_global_default(collector).expect("Unable to set a global collector");
 }
