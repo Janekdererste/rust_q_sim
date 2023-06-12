@@ -4,6 +4,7 @@ use crate::simulation::messaging::messages::proto::{Plan, TravelTimesMessage};
 use crate::simulation::messaging::travel_time_collector::TravelTimeCollector;
 use crate::simulation::network::network::Network;
 use crate::simulation::network::routing_kit_network::RoutingKitNetwork;
+use crate::simulation::performance_profiling::measure_duration;
 use crate::simulation::routing::network_converter::NetworkConverter;
 use crate::simulation::routing::road_router::RoadRouter;
 use crate::simulation::routing::router::{CustomQueryResult, Router};
@@ -11,6 +12,7 @@ use crate::simulation::routing::travel_times_message_broker::TravelTimesMessageB
 use itertools::Itertools;
 use mpi::topology::SystemCommunicator;
 use mpi::Rank;
+use serde_json::json;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use tracing::debug;
@@ -45,13 +47,21 @@ impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
         );
 
         //get travel times
-        let collected_travel_times = events
-            .get_subscriber::<TravelTimeCollector>()
-            .map(|travel_time_collector| travel_time_collector.get_travel_times())
-            .unwrap();
+        let collected_travel_times =
+            measure_duration(Some(now), "travel_time_aggregating", None, || {
+                events
+                    .get_subscriber::<TravelTimeCollector>()
+                    .map(|travel_time_collector| travel_time_collector.get_travel_times())
+                    .unwrap()
+            });
 
         //compute all updates of partition
-        let send_package = self.get_travel_times_by_mode_to_send(&collected_travel_times);
+        let send_package = measure_duration(
+            Some(now),
+            "travel_time_augmenting",
+            Some(json!({"updates": collected_travel_times.len()})),
+            || self.get_travel_times_by_mode_to_send(&collected_travel_times),
+        );
 
         self.get_travel_times_by_mode_to_send(&collected_travel_times);
 
@@ -59,7 +69,12 @@ impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
             .into_iter()
             .map(|(mode, updates)| {
                 let number_of_updates = updates.len() as u64;
-                let received_messages = self.traffic_message_broker.send_recv(now, updates);
+                let received_messages = measure_duration(
+                    Some(now),
+                    "travel_time_communicating",
+                    Some(json!({ "mode": mode, "updates": number_of_updates })),
+                    || self.traffic_message_broker.send_recv(now, updates),
+                );
                 (mode, received_messages)
             })
             .collect::<BTreeMap<String, Vec<TravelTimesMessage>>>();
@@ -70,7 +85,14 @@ impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
                 .iter()
                 .map(|m| m.travel_times_by_link_id.len())
                 .sum();
-            self.handle_traffic_info_messages(now, mode, message);
+            measure_duration(
+                Some(now),
+                "travel_time_handling",
+                Some(json!({ "mode": mode, "updates": number_of_updates })),
+                || {
+                    self.handle_traffic_info_messages(now, mode, message);
+                },
+            );
         }
 
         //reset travel times
@@ -136,10 +158,17 @@ impl<'router> TravelTimesCollectingRoadRouter<'router> {
             .get_current_network()
             .clone_with_new_travel_times_by_link(travel_times_by_link);
 
-        self.router_by_mode
-            .get_mut(&*mode)
-            .unwrap()
-            .customize(new_network);
+        measure_duration(
+            Some(now),
+            "router_customization",
+            Some(json!({ "mode": mode })),
+            || {
+                self.router_by_mode
+                    .get_mut(&*mode)
+                    .unwrap()
+                    .customize(new_network);
+            },
+        )
     }
 
     fn get_router_by_mode(&mut self, mode: &str) -> Option<&mut RoadRouter<'router>> {

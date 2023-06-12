@@ -1,5 +1,6 @@
 use crate::simulation::messaging::messages::proto::{Vehicle, VehicleMessage};
 
+use crate::simulation::performance_profiling::measure_duration;
 use mpi::topology::SystemCommunicator;
 use mpi::traits::{Communicator, Destination, Source};
 use mpi::Rank;
@@ -48,13 +49,15 @@ impl MessageBroker for MpiMessageBroker {
         // can ensure that a buffer is not moved while the request is in progress.
         mpi::request::multiple_scope(buf_msg.len(), |scope, reqs| {
             // ------- Send Part ---------
-            for (message, buf) in buf_msg.iter() {
-                let req = self
-                    .communicator
-                    .process_at_rank(message.to_process as Rank)
-                    .immediate_send(scope, buf);
-                reqs.add(req);
-            }
+            measure_duration(Some(now), "mpi_send", None, || {
+                for (message, buf) in buf_msg.iter() {
+                    let req = self
+                        .communicator
+                        .process_at_rank(message.to_process as Rank)
+                        .immediate_send(scope, buf);
+                    reqs.add(req);
+                }
+            });
 
             // ------ Receive Part --------
             self.pop_from_cache(
@@ -65,31 +68,35 @@ impl MessageBroker for MpiMessageBroker {
 
             // Use blocking MPI_recv here, since we don't have anything to do if there are no other
             // messages.
-            while !expected_vehicle_messages.is_empty() {
-                let (encoded_msg, _status) = self.communicator.any_process().receive_vec();
-                let msg = VehicleMessage::deserialize(&encoded_msg);
-                let from_rank = msg.from_process;
+            measure_duration(Some(now), "mpi_receive", None, || {
+                while !expected_vehicle_messages.is_empty() {
+                    let (encoded_msg, _status) = self.communicator.any_process().receive_vec();
+                    let msg = VehicleMessage::deserialize(&encoded_msg);
+                    let from_rank = msg.from_process;
 
-                // If a message was received from a neighbor partition for this very time step, remove
-                // that partition from expected messages which indicates which partitions we are waiting
-                // for
-                if msg.time == now {
-                    expected_vehicle_messages.remove(&from_rank);
+                    // If a message was received from a neighbor partition for this very time step, remove
+                    // that partition from expected messages which indicates which partitions we are waiting
+                    // for
+                    if msg.time == now {
+                        expected_vehicle_messages.remove(&from_rank);
+                    }
+                    // In case a message is for a future time step store it in the message cache, until
+                    // this process reaches the time step of that message. Otherwise store it in received
+                    // messages and use it in the simulation
+                    if msg.time <= now {
+                        received_vehicle_messages.push(msg);
+                    } else {
+                        self.in_messages.push(msg);
+                    }
                 }
-                // In case a message is for a future time step store it in the message cache, until
-                // this process reaches the time step of that message. Otherwise store it in received
-                // messages and use it in the simulation
-                if msg.time <= now {
-                    received_vehicle_messages.push(msg);
-                } else {
-                    self.in_messages.push(msg);
-                }
-            }
+            });
 
             // wait here, so that all requests finish. This is necessary, because a process might send
             // more messages than it receives. This happens, if a process sends messages to remote
             // partitions (teleported legs) but only receives messages from neighbor partitions.
-            reqs.wait_all(&mut Vec::new());
+            measure_duration(Some(now), "mpi_wait_all", None, || {
+                reqs.wait_all(&mut Vec::new());
+            });
         });
 
         received_vehicle_messages

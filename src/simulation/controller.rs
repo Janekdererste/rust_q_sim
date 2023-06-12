@@ -9,6 +9,7 @@ use crate::simulation::messaging::message_broker::MpiMessageBroker;
 use crate::simulation::messaging::travel_time_collector::TravelTimeCollector;
 use crate::simulation::network::network::Network;
 use crate::simulation::partition_info::PartitionInfo;
+use crate::simulation::performance_profiling::measure_duration;
 use crate::simulation::population::Population;
 use crate::simulation::routing::router::Router;
 use crate::simulation::routing::travel_times_collecting_road_router::TravelTimesCollectingRoadRouter;
@@ -16,6 +17,7 @@ use crate::simulation::routing::walk_leg_updater::{EuclideanWalkLegUpdater, Walk
 use crate::simulation::simulation::Simulation;
 use mpi::topology::SystemCommunicator;
 use mpi::traits::{Communicator, CommunicatorCollectives};
+use serde_json::json;
 use std::ffi::c_int;
 use std::fs;
 use std::fs::remove_dir_all;
@@ -125,6 +127,15 @@ pub fn run(world: SystemCommunicator, config: Config) {
         )))
     }
 
+    let local_links = network_partition.len_local_links();
+    let split_in_links = network_partition.len_split_in_links();
+    let split_out_links = network_partition.len_split_out_links();
+    let neighbors = network_partition
+        .neighbors()
+        .iter()
+        .map(|&n| n as u64)
+        .collect::<Vec<u64>>();
+
     let mut simulation = Simulation::new(
         &config,
         &id_mappings,
@@ -137,8 +148,17 @@ pub fn run(world: SystemCommunicator, config: Config) {
         walk_leg_finder,
     );
 
+    let metadata = json!({
+        "localLinks": local_links,
+        "splitInLinks": split_in_links,
+        "splitOutLinks": split_out_links,
+        "neighbors": neighbors
+    });
+
     let start = Instant::now();
-    simulation.run(config.start_time, config.end_time);
+    measure_duration(None, "simulation", Some(metadata), || {
+        simulation.run(config.start_time, config.end_time)
+    });
     let end = Instant::now();
     let duration = end.sub(start).as_millis() / 1000;
     info!("#{rank} took: {duration}s");
