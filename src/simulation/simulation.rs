@@ -11,6 +11,7 @@ use crate::simulation::messaging::messages::proto::{
 use crate::simulation::network::link::Link;
 use crate::simulation::network::network_partition::NetworkPartition;
 use crate::simulation::network::node::ExitReason;
+use crate::simulation::performance_profiling::measure_duration;
 use crate::simulation::population::Population;
 use crate::simulation::routing::router::Router;
 use crate::simulation::routing::walk_leg_updater::WalkLegUpdater;
@@ -75,9 +76,17 @@ impl<'sim> Simulation<'sim> {
                 info!("#{} of Qsim at {_hour}:{_min}", self.message_broker.rank);
             }
             self.wakeup(now);
-            self.terminate_teleportation(now);
-            self.move_nodes(now);
-            self.send_receive(now);
+
+            measure_duration(
+                Some(now),
+                "qsim_step",
+                None, //TODO
+                || {
+                    self.terminate_teleportation(now);
+                    self.move_nodes(now);
+                    self.send_receive(now);
+                },
+            );
 
             if let Some(router) = self.router.as_mut() {
                 router.next_time_step(now, &mut self.events)
@@ -110,7 +119,7 @@ impl<'sim> Simulation<'sim> {
                 {
                     self.update_walk_leg(&mut agent);
                 } else if agent.curr_act().is_interaction() && agent.next_act().is_interaction() {
-                    self.update_main_leg(&mut agent);
+                    self.update_main_leg(&mut agent, now);
                 } else {
                     panic!("Computing a leg between two main activities should never happen.")
                 }
@@ -172,12 +181,14 @@ impl<'sim> Simulation<'sim> {
         }
     }
 
-    fn update_main_leg(&mut self, agent: &mut Agent) {
+    fn update_main_leg(&mut self, agent: &mut Agent, now: u32) {
         let curr_act = agent.curr_act();
         let next_act = agent.next_act();
         let mode = agent.next_leg().mode.as_str();
 
-        let (route, travel_time) = self.find_route(agent.curr_act(), agent.next_act(), mode);
+        let (route, travel_time) = measure_duration(Some(now), "query", None, || {
+            self.find_route(agent.curr_act(), agent.next_act(), mode)
+        });
         let dep_time = curr_act.end_time;
 
         agent.update_next_leg(
