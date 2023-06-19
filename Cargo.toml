@@ -18,7 +18,7 @@ clap = { version = "4.0.29", features = ["derive"] }
 fast_paths = "0.2.0"
 rust_road_router = { git = "https://github.com/paulheinr/rust_road_router", branch = "clean_log" }
 mpi = "0.6"
-geo = "0.23.1"
+geo = "0.25.0"
 # dependencies for serialization with protobuf
 prost = "0.11.5"
 # bytes replaces the signature of std::io::Cursor to implemnt Buf somehow...
