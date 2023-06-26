@@ -63,8 +63,6 @@ impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
             || self.get_travel_times_by_mode_to_send(&collected_travel_times),
         );
 
-        self.get_travel_times_by_mode_to_send(&collected_travel_times);
-
         let received_messages_by_mode = send_package
             .into_iter()
             .map(|(mode, updates)| {
@@ -176,11 +174,11 @@ impl<'router> TravelTimesCollectingRoadRouter<'router> {
     }
 
     fn get_travel_times_by_mode_to_send(
-        &mut self,
+        &self,
         collected_travel_times: &HashMap<u64, u32>,
     ) -> BTreeMap<String, HashMap<u64, u32>> {
         let mut result = BTreeMap::new();
-        for (mode, router) in self.router_by_mode.iter_mut() {
+        for (mode, router) in self.router_by_mode.iter() {
             let mut extended_travel_times_by_link_id = HashMap::new();
             for id in &self.link_ids_of_process {
                 if let Some(travel_time) = collected_travel_times.get(&id) {

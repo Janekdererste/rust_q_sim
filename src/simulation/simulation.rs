@@ -75,6 +75,13 @@ impl<'sim> Simulation<'sim> {
                 let _min = (now % 3600) / 60;
                 info!("#{} of Qsim at {_hour}:{_min}", self.message_broker.rank);
             }
+
+            if let Some(router) = self.router.as_mut() {
+                measure_duration(Some(now), "next_time_step", None, || {
+                    router.next_time_step(now, &mut self.events)
+                })
+            }
+
             self.wakeup(now);
 
             measure_duration(
@@ -87,10 +94,6 @@ impl<'sim> Simulation<'sim> {
                     self.send_receive(now);
                 },
             );
-
-            if let Some(router) = self.router.as_mut() {
-                router.next_time_step(now, &mut self.events)
-            }
 
             now += 1;
         }
