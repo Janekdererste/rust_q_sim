@@ -1,9 +1,12 @@
 use crate::simulation::messaging::messages::proto::TravelTimesMessage;
+use crate::simulation::performance_profiling::measure_duration;
 use mpi::collective::CommunicatorCollectives;
 use mpi::datatype::PartitionMut;
 use mpi::topology::{Communicator, SystemCommunicator};
 use mpi::{Count, Rank};
+use serde_json::json;
 use std::collections::HashMap;
+use std::mem;
 
 pub struct TravelTimesMessageBroker {
     pub rank: Rank,
@@ -23,16 +26,22 @@ impl TravelTimesMessageBroker {
         let travel_times_message = TravelTimesMessage::from(travel_times);
         let serial_travel_times_message = travel_times_message.serialize();
 
-        self.gather_travel_times(&serial_travel_times_message)
+        self.gather_travel_times(&serial_travel_times_message, now)
     }
 
-    fn gather_travel_times(&mut self, travel_times_message: &Vec<u8>) -> Vec<TravelTimesMessage> {
+    fn gather_travel_times(
+        &mut self,
+        travel_times_message: &Vec<u8>,
+        now: u32,
+    ) -> Vec<TravelTimesMessage> {
         // ------- Gather traffic info lengths -------
         let mut travel_times_length_buffer = vec![0i32; self.communicator.size() as usize];
-        self.communicator.all_gather_into(
-            &(travel_times_message.len() as i32),
-            &mut travel_times_length_buffer[..],
-        );
+        measure_duration(Some(now), "travel_time_communicating_lengths", None, || {
+            self.communicator.all_gather_into(
+                &(travel_times_message.len() as i32),
+                &mut travel_times_length_buffer[..],
+            )
+        });
 
         // ------- Gather traffic info -------
         if travel_times_length_buffer.iter().sum::<i32>() <= 0 {
@@ -43,16 +52,33 @@ impl TravelTimesMessageBroker {
 
         let mut travel_times_buffer =
             vec![0u8; travel_times_length_buffer.iter().sum::<i32>() as usize];
+        let message_length = travel_times_buffer.len();
+        let message_size = mem::size_of_val(&travel_times_buffer);
+
         let info_displs = Self::get_travel_times_displs(&mut travel_times_length_buffer);
         let mut partition = PartitionMut::new(
             &mut travel_times_buffer,
             travel_times_length_buffer.clone(),
             &info_displs[..],
         );
-        self.communicator
-            .all_gather_varcount_into(&travel_times_message[..], &mut partition);
+        let metadata = Some(json!({ "length": message_length, "mem_size": message_size }));
 
-        Self::deserialize_travel_times(travel_times_buffer, travel_times_length_buffer)
+        measure_duration(
+            Some(now),
+            "travel_time_communicating_times",
+            metadata.clone(),
+            || {
+                self.communicator
+                    .all_gather_varcount_into(&travel_times_message[..], &mut partition);
+            },
+        );
+
+        measure_duration(
+            Some(now),
+            "travel_time_communicating_deserialize",
+            metadata,
+            || Self::deserialize_travel_times(travel_times_buffer, travel_times_length_buffer),
+        )
     }
 
     fn get_travel_times_displs(all_travel_times_message_lengths: &mut Vec<i32>) -> Vec<Count> {
