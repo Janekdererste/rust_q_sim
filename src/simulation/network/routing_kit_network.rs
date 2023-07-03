@@ -1,6 +1,5 @@
 use rust_road_router::datastr::graph::{EdgeId, NodeId, Weight};
 use std::collections::HashMap;
-use tracing::debug;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RoutingKitNetwork {
