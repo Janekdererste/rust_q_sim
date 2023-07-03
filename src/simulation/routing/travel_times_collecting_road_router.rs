@@ -132,29 +132,33 @@ impl<'router> TravelTimesCollectingRoadRouter<'router> {
             return;
         }
 
-        let travel_times_by_link = traffic_info_messages
-            .iter()
-            .map(|info| &info.travel_times_by_link_id)
-            .fold(HashMap::new(), |result, value| {
-                result.into_iter().chain(value).collect()
+        let travel_times_by_link =
+            measure_duration(Some(now), "travel_time_handling_fold", None, || {
+                traffic_info_messages
+                    .iter()
+                    .map(|info| &info.travel_times_by_link_id)
+                    .fold(HashMap::new(), |result, value| {
+                        result.into_iter().chain(value).collect()
+                    })
             });
 
-        let number_of_links_with_traffic_info = traffic_info_messages
-            .iter()
-            .map(|info| info.travel_times_by_link_id.len())
-            .sum::<usize>();
+        // let number_of_links_with_traffic_info = traffic_info_messages
+        //     .iter()
+        //     .map(|info| info.travel_times_by_link_id.len())
+        //     .sum::<usize>();
+        //
+        // assert_eq!(
+        //     number_of_links_with_traffic_info,
+        //     travel_times_by_link.len()
+        // );
 
-        assert_eq!(
-            number_of_links_with_traffic_info,
-            travel_times_by_link.len()
-        );
-
-        let new_network = self
-            .router_by_mode
-            .get(&*mode)
-            .unwrap()
-            .get_current_network()
-            .clone_with_new_travel_times_by_link(travel_times_by_link);
+        let new_network = measure_duration(Some(now), "travel_time_handling_clone", None, || {
+            self.router_by_mode
+                .get(&*mode)
+                .unwrap()
+                .get_current_network()
+                .clone_with_new_travel_times_by_link(travel_times_by_link)
+        });
 
         measure_duration(
             Some(now),

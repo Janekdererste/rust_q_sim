@@ -24,7 +24,13 @@ impl TravelTimesMessageBroker {
         travel_times: HashMap<u64, u32>,
     ) -> Vec<TravelTimesMessage> {
         let travel_times_message = TravelTimesMessage::from(travel_times);
-        let serial_travel_times_message = travel_times_message.serialize();
+
+        let serial_travel_times_message = measure_duration(
+            Some(now),
+            "travel_time_communicating_serialize",
+            None,
+            || travel_times_message.serialize(),
+        );
 
         self.gather_travel_times(&serial_travel_times_message, now)
     }
