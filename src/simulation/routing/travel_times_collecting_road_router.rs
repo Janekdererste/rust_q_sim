@@ -132,14 +132,12 @@ impl<'router> TravelTimesCollectingRoadRouter<'router> {
             return;
         }
 
-        let travel_times_by_link =
+        let travel_times_by_link: HashMap<u64, u32> =
             measure_duration(Some(now), "travel_time_handling_fold", None, || {
                 traffic_info_messages
-                    .iter()
-                    .map(|info| &info.travel_times_by_link_id)
-                    .fold(HashMap::new(), |result, value| {
-                        result.into_iter().chain(value).collect()
-                    })
+                    .into_iter()
+                    .flat_map(|info| info.travel_times_by_link_id.into_iter())
+                    .collect()
             });
 
         // let number_of_links_with_traffic_info = traffic_info_messages

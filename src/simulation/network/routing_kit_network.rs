@@ -46,15 +46,14 @@ impl RoutingKitNetwork {
 
     pub fn clone_with_new_travel_times_by_link(
         &self,
-        new_travel_times_by_link: HashMap<&u64, &u32>,
+        new_travel_times_by_link: HashMap<u64, u32>,
     ) -> RoutingKitNetwork {
         let mut new_travel_time_vector = Vec::new();
 
         assert_eq!(self.link_ids.len(), self.travel_time.len());
         for (index, &id) in self.link_ids.iter().enumerate() {
-            if let Some(&&new_travel_time) = new_travel_times_by_link.get(&(id as u64)) {
+            if let Some(&new_travel_time) = new_travel_times_by_link.get(&(id as u64)) {
                 new_travel_time_vector.push(new_travel_time);
-                debug!("Link {:?} | new travel time {:?}", id, new_travel_time);
             } else {
                 new_travel_time_vector.push(*self.travel_time.get(index).unwrap())
             }
