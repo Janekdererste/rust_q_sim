@@ -14,13 +14,17 @@ use mpi::topology::SystemCommunicator;
 use mpi::Rank;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::env;
 use std::path::PathBuf;
 use tracing::debug;
+
+const DEFAULT_ROUTER_UPDATE_INTERVAL: u32 = 900;
 
 pub struct TravelTimesCollectingRoadRouter<'router> {
     router_by_mode: BTreeMap<String, RoadRouter<'router>>,
     traffic_message_broker: TravelTimesMessageBroker,
     link_ids_of_process: HashSet<u64>,
+    update_interval: u32,
 }
 
 impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
@@ -34,8 +38,7 @@ impl<'router> Router for TravelTimesCollectingRoadRouter<'router> {
     }
 
     fn next_time_step(&mut self, now: u32, events: &mut EventsPublisher) {
-        let traffic_update_interval_in_min = 15;
-        if !(now % (60 * traffic_update_interval_in_min) == 0) {
+        if !(now % self.update_interval == 0) {
             return;
         }
 
@@ -115,10 +118,18 @@ impl<'router> TravelTimesCollectingRoadRouter<'router> {
             .sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             .collect::<BTreeMap<_, _>>();
 
+        let update_interval = match env::var("RUST_Q_SIM_ROUTER_UPDATE_INTERVAL") {
+            Ok(interval) => interval
+                .parse::<u32>()
+                .unwrap_or(DEFAULT_ROUTER_UPDATE_INTERVAL),
+            Err(_) => DEFAULT_ROUTER_UPDATE_INTERVAL,
+        };
+
         TravelTimesCollectingRoadRouter {
             router_by_mode,
             traffic_message_broker: TravelTimesMessageBroker::new(communicator, rank),
             link_ids_of_process,
+            update_interval,
         }
     }
 

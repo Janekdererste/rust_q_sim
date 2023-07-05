@@ -82,13 +82,12 @@ impl<'sim> Simulation<'sim> {
                 })
             }
 
-            self.wakeup(now);
-
             measure_duration(
                 Some(now),
                 "qsim_step",
                 None, //TODO
                 || {
+                    self.wakeup(now);
                     self.terminate_teleportation(now);
                     self.move_nodes(now);
                     self.send_receive(now);
