@@ -133,6 +133,7 @@ impl ReRouteTripReplanner {
         agent.replace_next_leg(vec![access, agent.next_leg().clone(), egress]);
     }
 
+    #[tracing::instrument(level = "trace", skip(self, agent, garage))]
     fn replan_main(&self, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
 
@@ -290,13 +291,7 @@ impl ReRouteTripReplanner {
     fn calculate_distance(&self, route: &[u64]) -> f64 {
         let distance: f64 = route
             .iter()
-            .map(|id| {
-                self.global_network
-                    .links
-                    .iter()
-                    .find(|l| l.id == Id::<Link>::get(*id))
-                    .unwrap_or_else(|| panic!("No link with id {:?}", id))
-            })
+            .map(|id| self.global_network.get_link(&Id::<Link>::get(*id)))
             .map(|l| l.length)
             .sum();
         distance
