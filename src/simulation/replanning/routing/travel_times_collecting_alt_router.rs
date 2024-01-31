@@ -160,17 +160,11 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
 
         let veh_type_id = Id::<VehicleType>::get(veh_type_id_internal);
 
-        let new_graph = self
-            .router_by_veh_type
-            .get(&veh_type_id)
-            .unwrap()
-            .current_graph()
-            .clone_with_new_travel_times_by_link(travel_times_by_link);
-
         self.router_by_veh_type
             .get_mut(&veh_type_id)
             .unwrap()
-            .update(new_graph);
+            .current_graph_mut()
+            .insert_new_travel_times_by_link(travel_times_by_link);
     }
 
     fn get_router_by_mode(&self, veh_type_id: &Id<VehicleType>) -> Option<&AltRouter> {

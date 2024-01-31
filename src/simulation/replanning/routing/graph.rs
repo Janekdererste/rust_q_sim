@@ -75,18 +75,11 @@ impl ForwardBackwardGraph {
         self.forward_graph.head.len()
     }
 
-    pub fn clone_with_new_travel_times_by_link(
-        &self,
-        new_travel_times_by_link: HashMap<u64, u32>,
-    ) -> ForwardBackwardGraph {
-        ForwardBackwardGraph {
-            forward_graph: self
-                .forward_graph
-                .clone_with_new_travel_times_by_link(&new_travel_times_by_link),
-            backward_graph: self
-                .backward_graph
-                .clone_with_new_travel_times_by_link(&new_travel_times_by_link),
-        }
+    pub fn insert_new_travel_times_by_link(&mut self, new_travel_times_by_link: HashMap<u64, u32>) {
+        self.forward_graph
+            .insert_new_travel_times_by_link(&new_travel_times_by_link);
+        self.backward_graph
+            .insert_new_travel_times_by_link(&new_travel_times_by_link);
     }
 }
 
@@ -117,10 +110,10 @@ impl Graph {
     }
 
     #[tracing::instrument(level = "trace", skip(new_travel_times_by_link))]
-    pub fn clone_with_new_travel_times_by_link(
-        &self,
+    pub fn insert_new_travel_times_by_link(
+        &mut self,
         new_travel_times_by_link: &HashMap<u64, u32>,
-    ) -> Graph {
+    ) {
         debug_assert_eq!(self.link_ids.len(), self.travel_time.len());
 
         let mut new_travel_time_vector = Vec::new();
@@ -132,14 +125,12 @@ impl Graph {
             );
         }
 
-        self.clone_with_new_travel_times(new_travel_time_vector)
+        self.insert_new_travel_times(new_travel_time_vector);
     }
 
     #[tracing::instrument(level = "trace", skip(travel_times))]
-    fn clone_with_new_travel_times(&self, travel_times: Vec<u32>) -> Graph {
-        let mut result = self.clone();
-        result.travel_time = travel_times;
-        result
+    fn insert_new_travel_times(&mut self, travel_times: Vec<u32>) {
+        let _ = std::mem::replace(&mut self.travel_time, travel_times);
     }
 }
 
@@ -192,8 +183,9 @@ pub(crate) mod tests {
 
     #[test]
     fn clone_without_change() {
-        let graph = get_triangle_test_graph();
-        let new_graph = graph.clone_with_new_travel_times_by_link(HashMap::new());
+        let mut graph = get_triangle_test_graph();
+        let new_graph = graph.clone();
+        graph.insert_new_travel_times_by_link(HashMap::new());
 
         assert_eq!(graph, new_graph);
     }
@@ -201,9 +193,10 @@ pub(crate) mod tests {
     #[test]
     fn clone_with_change() {
         let mut graph = get_triangle_test_graph();
+        let mut new_graph = graph.clone();
         let mut change = HashMap::new();
         change.insert(5, 42);
-        let new_graph = graph.clone_with_new_travel_times_by_link(change);
+        new_graph.insert_new_travel_times_by_link(change);
 
         //change manually
         graph.forward_graph.travel_time[5] = 42;

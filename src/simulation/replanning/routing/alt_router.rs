@@ -208,8 +208,8 @@ impl AltRouter {
         result.unwrap()
     }
 
-    pub fn current_graph(&self) -> &ForwardBackwardGraph {
-        &self.current_graph
+    pub fn current_graph_mut(&mut self) -> &mut ForwardBackwardGraph {
+        &mut self.current_graph
     }
 
     pub fn get_initial_travel_time(&self, link_id: u64) -> Option<u32> {
