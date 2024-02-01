@@ -1,3 +1,5 @@
+use ahash::HashMapExt;
+use nohash_hasher::IntMap;
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -8,8 +10,8 @@ use crate::simulation::wire_types::events::{
 };
 
 pub struct TravelTimeCollector {
-    travel_times_by_link: HashMap<u64, Vec<u32>>,
-    cache_enter_time_by_vehicle: HashMap<u64, u32>,
+    travel_times_by_link: IntMap<u64, Vec<u32>>,
+    cache_enter_time_by_vehicle: IntMap<u64, u32>,
 }
 
 impl Default for TravelTimeCollector {
@@ -21,8 +23,8 @@ impl Default for TravelTimeCollector {
 impl TravelTimeCollector {
     pub fn new() -> Self {
         TravelTimeCollector {
-            travel_times_by_link: HashMap::new(),
-            cache_enter_time_by_vehicle: HashMap::new(),
+            travel_times_by_link: IntMap::new(),
+            cache_enter_time_by_vehicle: IntMap::new(),
         }
     }
 
@@ -74,7 +76,7 @@ impl TravelTimeCollector {
         // Collected travel times will be dropped, but cached values not.
         // Vehicles of cached values haven't left the corresponding links yet.
         // A travel time of a link is considered when a vehicle leaves the link.
-        self.travel_times_by_link = HashMap::new();
+        self.travel_times_by_link = IntMap::new();
     }
 }
 

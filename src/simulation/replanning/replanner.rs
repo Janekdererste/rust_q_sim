@@ -44,7 +44,6 @@ pub struct ReRouteTripReplanner {
 }
 
 impl Replanner for ReRouteTripReplanner {
-    #[tracing::instrument(level = "trace", skip(self, events))]
     fn update_time(&mut self, now: u32, events: &mut EventsPublisher) {
         self.network_router.next_time_step(now, events)
     }

@@ -1,3 +1,4 @@
+use nohash_hasher::IntMap;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -75,7 +76,7 @@ impl ForwardBackwardGraph {
         self.forward_graph.head.len()
     }
 
-    pub fn insert_new_travel_times_by_link(&mut self, new_travel_times_by_link: HashMap<u64, u32>) {
+    pub fn insert_new_travel_times_by_link(&mut self, new_travel_times_by_link: IntMap<u64, u32>) {
         self.forward_graph
             .insert_new_travel_times_by_link(&new_travel_times_by_link);
         self.backward_graph
@@ -109,26 +110,23 @@ impl Graph {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(new_travel_times_by_link))]
-    pub fn insert_new_travel_times_by_link(
-        &mut self,
-        new_travel_times_by_link: &HashMap<u64, u32>,
-    ) {
+    #[tracing::instrument(level = "info", skip(new_travel_times_by_link))]
+    pub fn insert_new_travel_times_by_link(&mut self, new_travel_times_by_link: &IntMap<u64, u32>) {
         debug_assert_eq!(self.link_ids.len(), self.travel_time.len());
 
         let mut new_travel_time_vector = Vec::new();
-        for (index, &id) in self.link_ids.iter().enumerate() {
+        for (index, id) in self.link_ids.iter().enumerate() {
             new_travel_time_vector.push(
                 *new_travel_times_by_link
-                    .get(&(id))
-                    .unwrap_or_else(|| self.travel_time.get(index).unwrap()),
+                    .get(id)
+                    .unwrap_or(self.travel_time.get(index).unwrap()),
             );
         }
 
         self.insert_new_travel_times(new_travel_time_vector);
     }
 
-    #[tracing::instrument(level = "trace", skip(travel_times))]
+    #[tracing::instrument(level = "info", skip(travel_times))]
     fn insert_new_travel_times(&mut self, travel_times: Vec<u32>) {
         let _ = std::mem::replace(&mut self.travel_time, travel_times);
     }
@@ -137,7 +135,8 @@ impl Graph {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::simulation::config::{MetisOptions, PartitionMethod};
-    use std::collections::HashMap;
+    use ahash::HashMapExt;
+    use nohash_hasher::IntMap;
 
     use crate::simulation::network::global_network::Network;
     use crate::simulation::replanning::routing::graph::{ForwardBackwardGraph, Graph};
@@ -185,7 +184,7 @@ pub(crate) mod tests {
     fn clone_without_change() {
         let mut graph = get_triangle_test_graph();
         let new_graph = graph.clone();
-        graph.insert_new_travel_times_by_link(HashMap::new());
+        graph.insert_new_travel_times_by_link(IntMap::new());
 
         assert_eq!(graph, new_graph);
     }
@@ -194,7 +193,7 @@ pub(crate) mod tests {
     fn clone_with_change() {
         let mut graph = get_triangle_test_graph();
         let mut new_graph = graph.clone();
-        let mut change = HashMap::new();
+        let mut change = IntMap::new();
         change.insert(5, 42);
         new_graph.insert_new_travel_times_by_link(change);
 

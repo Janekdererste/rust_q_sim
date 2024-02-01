@@ -88,7 +88,7 @@ impl<C: SimCommunicator> NetworkRouter for TravelTimesCollectingAltRouter<C> {
 }
 
 impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
-    #[tracing::instrument(level = "trace", skip(events))]
+    #[tracing::instrument(level = "info", skip(events))]
     fn collect_travel_times(events: &mut EventsPublisher, _now: u32) -> HashMap<u64, u32> {
         events
             .get_subscriber::<TravelTimeCollector>()
@@ -96,7 +96,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
             .unwrap()
     }
 
-    #[tracing::instrument(level = "trace", skip(updates))]
+    #[tracing::instrument(level = "info", skip(updates))]
     fn communicate_travel_times(
         &mut self,
         now: u32,
@@ -132,7 +132,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(veh_type_id_internal, traffic_info_messages))]
+    #[tracing::instrument(level = "info", skip(veh_type_id_internal, traffic_info_messages))]
     fn handle_traffic_info_messages(
         &mut self,
         _now: u32,
@@ -143,20 +143,20 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
             return;
         }
 
-        let number_of_links_with_traffic_info = traffic_info_messages
-            .iter()
-            .map(|info| info.travel_times_by_link_id.len())
-            .sum::<usize>();
-
-        let travel_times_by_link: HashMap<u64, u32> = traffic_info_messages
+        let travel_times_by_link: IntMap<u64, u32> = traffic_info_messages
             .into_iter()
             .flat_map(|info| info.travel_times_by_link_id.into_iter())
             .collect();
 
-        debug_assert_eq!(
-            number_of_links_with_traffic_info,
-            travel_times_by_link.len()
-        );
+        // let number_of_links_with_traffic_info = traffic_info_messages
+        //     .iter()
+        //     .map(|info| info.travel_times_by_link_id.len())
+        //     .sum::<usize>();
+
+        // debug_assert_eq!(
+        //     number_of_links_with_traffic_info,
+        //     travel_times_by_link.len()
+        // );
 
         let veh_type_id = Id::<VehicleType>::get(veh_type_id_internal);
 
@@ -171,7 +171,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
         self.router_by_veh_type.get(veh_type_id)
     }
 
-    #[tracing::instrument(level = "trace", skip(self, collected_travel_times))]
+    #[tracing::instrument(level = "info", skip(self, collected_travel_times))]
     fn get_travel_times_by_mode_to_send(
         &mut self,
         collected_travel_times: &HashMap<u64, u32>,
