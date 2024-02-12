@@ -197,7 +197,7 @@ pub struct MpiSimCommunicator {
 }
 
 impl SimCommunicator for MpiSimCommunicator {
-    #[instrument(level = "trace", skip(self, on_msg), fields(rank = self.rank()))]
+    // #[instrument(level = "trace", skip(self, on_msg), fields(rank = self.rank()))]
     fn send_receive_vehicles<F>(
         &self,
         out_messages: HashMap<u32, SyncMessage>,
@@ -207,8 +207,8 @@ impl SimCommunicator for MpiSimCommunicator {
     ) where
         F: FnMut(SyncMessage),
     {
-        let send_span = span!(Level::TRACE, "send_msgs", rank = self.rank(), now = now);
-        let send_time = send_span.enter();
+        // let send_span = span!(Level::TRACE, "send_msgs", rank = self.rank(), now = now);
+        // let send_time = send_span.enter();
         let buf_msg: Vec<_> = out_messages
             .into_iter()
             .map(|(to, m)| (to, SimMessage::from_sync_message(m).serialize()))
@@ -237,19 +237,19 @@ impl SimCommunicator for MpiSimCommunicator {
                     .immediate_send(scope, buf);
                 reqs.add(req);
             }
-            drop(send_time);
+            // drop(send_time);
 
-            let receive_span = span!(Level::TRACE, "receive_msgs", rank = self.rank(), now = now);
-            let handle_span = span!(Level::TRACE, "handle_msgs", rank = self.rank(), now = now);
+            // let receive_span = span!(Level::TRACE, "receive_msgs", rank = self.rank(), now = now);
+            // let handle_span = span!(Level::TRACE, "handle_msgs", rank = self.rank(), now = now);
             // Use blocking MPI_recv here, since we don't have anything to do if there are no other
             // messages.
             while !expected_vehicle_messages.is_empty() {
                 // measure the wait time for receiving
-                let receive_time = receive_span.enter();
+                // let receive_time = receive_span.enter();
                 let (encoded_msg, _status) = self.mpi_communicator.any_process().receive_vec();
-                drop(receive_time);
+                // drop(receive_time);
 
-                let handle_time = handle_span.enter();
+                // let handle_time = handle_span.enter();
                 let msg = SimMessage::deserialize(&encoded_msg).sync_message();
                 let from_rank = msg.from_process;
 
@@ -261,16 +261,16 @@ impl SimCommunicator for MpiSimCommunicator {
                 }
 
                 on_msg(msg);
-                drop(handle_time);
+                // drop(handle_time);
             }
 
             // wait here, so that all requests finish. This is necessary, because a process might send
             // more messages than it receives. This happens, if a process sends messages to remote
             // partitions (teleported legs) but only receives messages from neighbor partitions.
             // this also accounts for wait times
-            let receive_time = receive_span.enter();
+            // let receive_time = receive_span.enter();
             reqs.wait_all(&mut Vec::new());
-            drop(receive_time)
+            // drop(receive_time)
         });
     }
 
@@ -329,7 +329,7 @@ impl MpiSimCommunicator {
         self.deserialize_travel_times(travel_times_buffer, travel_times_length_buffer)
     }
 
-    #[instrument(level = "info", skip_all, fields(rank = self.rank()))]
+    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
     fn gather_travel_times_var_count(
         &self,
         sim_travel_times_message: &&Vec<u8>,
@@ -348,7 +348,7 @@ impl MpiSimCommunicator {
         travel_times_buffer
     }
 
-    #[instrument(level = "info", skip_all, fields(rank = self.rank()))]
+    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
     fn gather_travel_time_lengths(&self, sim_travel_times_message: &&Vec<u8>) -> Vec<i32> {
         let mut travel_times_length_buffer = vec![0i32; self.mpi_communicator.size() as usize];
         self.mpi_communicator.all_gather_into(
@@ -370,7 +370,7 @@ impl MpiSimCommunicator {
             .collect()
     }
 
-    #[instrument(level = "info", skip_all, fields(rank = self.rank()))]
+    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
     fn deserialize_travel_times(
         &self,
         all_travel_times_messages: Vec<u8>,

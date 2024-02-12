@@ -88,7 +88,7 @@ impl<C: SimCommunicator> NetworkRouter for TravelTimesCollectingAltRouter<C> {
 }
 
 impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
-    #[tracing::instrument(level = "info", skip(events))]
+    #[tracing::instrument(level = "trace", skip(events))]
     fn collect_travel_times(events: &mut EventsPublisher, _now: u32) -> HashMap<u64, u32> {
         events
             .get_subscriber::<TravelTimeCollector>()
@@ -96,7 +96,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
             .unwrap()
     }
 
-    #[tracing::instrument(level = "info", skip(updates), fields(rank = self.traffic_message_broker.rank()))]
+    #[tracing::instrument(level = "trace", skip(updates), fields(rank = self.traffic_message_broker.rank()))]
     fn communicate_travel_times(
         &mut self,
         now: u32,
@@ -132,7 +132,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(veh_type_id_internal, traffic_info_messages), fields(rank = self.traffic_message_broker.rank()))]
+    #[tracing::instrument(level = "trace", skip(veh_type_id_internal, traffic_info_messages), fields(rank = self.traffic_message_broker.rank()))]
     fn handle_traffic_info_messages(
         &mut self,
         _now: u32,
@@ -171,7 +171,7 @@ impl<C: SimCommunicator> TravelTimesCollectingAltRouter<C> {
         self.router_by_veh_type.get(veh_type_id)
     }
 
-    #[tracing::instrument(level = "info", skip(self, collected_travel_times), fields(rank = self.traffic_message_broker.rank()))]
+    #[tracing::instrument(level = "trace", skip(self, collected_travel_times), fields(rank = self.traffic_message_broker.rank()))]
     fn get_travel_times_by_mode_to_send(
         &mut self,
         collected_travel_times: &HashMap<u64, u32>,

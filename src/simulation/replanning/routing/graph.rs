@@ -110,7 +110,7 @@ impl Graph {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(new_travel_times_by_link))]
+    // #[tracing::instrument(level = "trace", skip(new_travel_times_by_link))]
     pub fn insert_new_travel_times_by_link(&mut self, new_travel_times_by_link: &IntMap<u64, u32>) {
         debug_assert_eq!(self.link_ids.len(), self.travel_time.len());
 
@@ -126,7 +126,7 @@ impl Graph {
         self.insert_new_travel_times(new_travel_time_vector);
     }
 
-    #[tracing::instrument(level = "trace", skip(travel_times))]
+    // #[tracing::instrument(level = "trace", skip(travel_times))]
     fn insert_new_travel_times(&mut self, travel_times: Vec<u32>) {
         let _ = std::mem::replace(&mut self.travel_time, travel_times);
     }
