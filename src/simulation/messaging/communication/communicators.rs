@@ -324,7 +324,7 @@ impl MpiSimCommunicator {
         Self::deserialize_travel_times(travel_times_buffer, travel_times_length_buffer)
     }
 
-    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
+    #[instrument(level = "info", skip_all, fields(rank = self.rank()))]
     fn gather_travel_times_var_count(
         &self,
         sim_travel_times_message: &&Vec<u8>,
@@ -343,7 +343,7 @@ impl MpiSimCommunicator {
         travel_times_buffer
     }
 
-    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
+    #[instrument(level = "info", skip_all, fields(rank = self.rank()))]
     fn gather_travel_time_lengths(&self, sim_travel_times_message: &&Vec<u8>) -> Vec<i32> {
         let mut travel_times_length_buffer = vec![0i32; self.mpi_communicator.size() as usize];
         self.mpi_communicator.all_gather_into(
@@ -365,7 +365,7 @@ impl MpiSimCommunicator {
             .collect()
     }
 
-    #[instrument(level = "trace", skip_all)]
+    #[instrument(level = "info", skip_all)]
     fn deserialize_travel_times(
         all_travel_times_messages: Vec<u8>,
         lengths: Vec<i32>,
