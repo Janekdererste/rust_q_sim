@@ -170,6 +170,7 @@ mod tests {
     use std::sync::Arc;
     use std::thread;
 
+    use crate::simulation::config;
     use crate::simulation::id::Id;
     use crate::simulation::messaging::communication::communicators::ChannelSimCommunicator;
     use crate::simulation::messaging::communication::message_broker::{
@@ -353,10 +354,16 @@ mod tests {
         communicator: ChannelSimCommunicator,
     ) -> NetMessageBroker<ChannelSimCommunicator> {
         let rank = communicator.rank();
+        let config = config::Simulation {
+            start_time: 0,
+            end_time: 0,
+            sample_size: 0.0,
+            stuck_threshold: 0,
+        };
         let broker = NetMessageBroker::new(
             Rc::new(communicator),
             &create_network(),
-            &SimNetworkPartition::from_network(&create_network(), rank, 1.0),
+            &SimNetworkPartition::from_network(&create_network(), rank, config),
         );
         broker
     }

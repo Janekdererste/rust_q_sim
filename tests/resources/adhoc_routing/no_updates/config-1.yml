@@ -17,9 +17,4 @@ modules:
   routing:
     type: Routing
     mode: AdHoc
-  simulation:
-    type: Simulation
-    start_time: 0
-    end_time: 86400
-    sample_size: 1.0
 

@@ -13,12 +13,14 @@ modules:
     type: Output
     output_dir: /Users/janek/Documents/rust_q_sim/equil/output/size
     profiling: !CSV
+      level: TRACE
   routing:
     type: Routing
     mode: UsePlans
   simulation:
     type: Simulation
     start_time: 0
-    end_time: 86400
+    end_time: 10
     sample_size: 1.0
+    stuck_threshold: 1000
 

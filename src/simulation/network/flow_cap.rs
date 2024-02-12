@@ -6,7 +6,8 @@ pub struct Flowcap {
 }
 
 impl Flowcap {
-    pub fn new(capacity_s: f32) -> Flowcap {
+    pub fn new(capacity_h: f32, sample_size: f32) -> Flowcap {
+        let capacity_s = capacity_h * sample_size / 3600.;
         Flowcap {
             last_update_time: 0,
             accumulated_capacity: capacity_s,
@@ -41,11 +42,19 @@ impl Flowcap {
 
 #[cfg(test)]
 mod tests {
+    use assert_approx_eq::assert_approx_eq;
+
     use crate::simulation::network::flow_cap::Flowcap;
 
     #[test]
+    fn init() {
+        let cap = Flowcap::new(5432., 0.31415);
+        assert_approx_eq!(0.47401747, cap.capacity_s, 0.0001);
+    }
+
+    #[test]
     fn flowcap_consume_capacity() {
-        let mut flowcap = Flowcap::new(10.0);
+        let mut flowcap = Flowcap::new(36000., 1.);
         assert!(flowcap.has_capacity());
 
         flowcap.consume_capacity(20.0);
@@ -54,7 +63,7 @@ mod tests {
 
     #[test]
     fn flowcap_max_capacity_s() {
-        let mut flowcap = Flowcap::new(10.0);
+        let mut flowcap = Flowcap::new(36000., 1.);
 
         flowcap.update_capacity(20);
 
@@ -64,7 +73,7 @@ mod tests {
 
     #[test]
     fn flowcap_acc_capacity() {
-        let mut flowcap = Flowcap::new(0.25);
+        let mut flowcap = Flowcap::new(900., 1.);
         assert!(flowcap.has_capacity());
 
         // accumulated_capacity should be at -0.75 after this.

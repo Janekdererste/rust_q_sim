@@ -208,7 +208,7 @@ impl IOPerson {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct IOPopulation {
-    #[serde(rename = "person")]
+    #[serde(rename = "person", default)]
     pub persons: Vec<IOPerson>,
 }
 
@@ -225,12 +225,13 @@ impl IOPopulation {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use quick_xml::de::from_str;
+
     use crate::simulation::config::{MetisOptions, PartitionMethod};
     use crate::simulation::id::Id;
     use crate::simulation::network::global_network::Network;
-    use quick_xml::de::from_str;
-    use std::path::PathBuf;
-
     use crate::simulation::population::io::{load_from_xml, IOPlanElement, IOPopulation};
     use crate::simulation::vehicles::garage::Garage;
 

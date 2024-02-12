@@ -98,8 +98,7 @@ pub fn execute_sim<C: SimCommunicator + 'static>(
     let mut garage = Garage::from_file(&PathBuf::from(config.proto_files().vehicles));
 
     let population: Population = Population::from_file(&temp_population_file, &mut garage);
-    let sim_net =
-        SimNetworkPartition::from_network(&network, rank, config.simulation().sample_size);
+    let sim_net = SimNetworkPartition::from_network(&network, rank, config.simulation());
 
     let mut events = EventsPublisher::new();
     events.add_subscriber(test_subscriber);

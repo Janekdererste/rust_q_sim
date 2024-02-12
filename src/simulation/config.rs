@@ -15,7 +15,6 @@ use crate::simulation::config::VertexWeight::InLinkCapacity;
 pub struct CommandLineArgs {
     #[arg(long, short)]
     pub config_path: String,
-
     #[arg(long, short)]
     pub num_parts: Option<u32>,
 }
@@ -28,7 +27,12 @@ pub struct Config {
 impl Config {
     pub fn from_file(args: &CommandLineArgs) -> Self {
         let reader = BufReader::new(File::open(&args.config_path).expect("Failed to open file."));
-        let mut config: Config = serde_yaml::from_reader(reader).expect("Failed to parse config.");
+        let mut config: Config = serde_yaml::from_reader(reader).unwrap_or_else(|e| {
+            panic!(
+                "Failed to parse config at {}. Original error was: {}",
+                args.config_path, e
+            )
+        });
         // replace some configuration if we get a partition from the outside. This is interesting for testing
         if let Some(part_args) = args.num_parts {
             config.set_partitioning(Partitioning {
@@ -104,14 +108,10 @@ impl Config {
         if let Some(simulation) = self.module::<Simulation>("simulation") {
             simulation
         } else {
-            let default = Simulation {
-                start_time: 0,
-                end_time: 86400,
-                sample_size: 1.,
-            };
+            let default = Simulation::default();
             self.modules
                 .borrow_mut()
-                .insert("simulation".to_string(), Box::new(default.clone()));
+                .insert("simulation".to_string(), Box::new(default));
             default
         }
     }
@@ -164,11 +164,12 @@ pub struct Routing {
     pub mode: RoutingMode,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct Simulation {
     pub start_time: u32,
     pub end_time: u32,
     pub sample_size: f32,
+    pub stuck_threshold: u32,
 }
 
 #[typetag::serde(tag = "type")]
@@ -208,6 +209,17 @@ impl ConfigModule for Routing {
 impl ConfigModule for Simulation {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl Default for Simulation {
+    fn default() -> Self {
+        Self {
+            start_time: 0,
+            end_time: 86400,
+            sample_size: 1.0,
+            stuck_threshold: u32::MAX,
+        }
     }
 }
 

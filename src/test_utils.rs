@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::simulation::config;
 use crate::simulation::id::Id;
 use crate::simulation::wire_types::population::{Activity, Leg, Person, Plan, Route};
 use crate::simulation::wire_types::vehicles::{LevelOfDetail, VehicleType};
@@ -38,5 +39,14 @@ pub fn create_vehicle_type(id: &Id<VehicleType>, net_mode: Id<String>) -> Vehicl
         fef: 0.0,
         net_mode: net_mode.internal(),
         lod: LevelOfDetail::Network as i32,
+    }
+}
+
+pub fn config() -> config::Simulation {
+    config::Simulation {
+        start_time: 0,
+        end_time: 0,
+        sample_size: 1.0,
+        stuck_threshold: u32::MAX,
     }
 }

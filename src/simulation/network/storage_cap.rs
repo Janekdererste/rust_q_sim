@@ -25,10 +25,11 @@ impl StorageCap {
     pub fn new(
         length: f64,
         perm_lanes: f32,
-        flow_cap_s: f32,
+        capacity_h: f32,
         sample_size: f32,
         effective_cell_size: f32,
     ) -> Self {
+        let flow_cap_s = capacity_h * sample_size / 3600.;
         let cap = length * perm_lanes as f64 * sample_size as f64 / effective_cell_size as f64;
         // storage capacity needs to be at least enough to handle the cap_per_time_step:
         let max_storage_cap = flow_cap_s.max(cap as f32);
@@ -54,11 +55,6 @@ impl StorageCap {
 
     pub fn consumed(&self) -> f32 {
         self.consumed
-    }
-
-    #[cfg(test)]
-    pub fn max(&self) -> f32 {
-        self.max
     }
 
     /// Consumes storage capacity on a link
@@ -97,5 +93,23 @@ impl StorageCap {
     pub fn is_available(&self) -> bool {
         let available_cap = self.max - self.currently_used();
         available_cap > 0.0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::simulation::network::storage_cap::StorageCap;
+
+    #[test]
+    fn init_default() {
+        let cap = StorageCap::new(100., 3., 1., 0.2, 7.5);
+        assert_eq!(8., cap.max);
+    }
+
+    #[test]
+    fn init_large_capacity() {
+        let cap = StorageCap::new(100., 3., 360000., 0.2, 7.5);
+        // we expect a storage size of 20. because it the flow cap/s is 20 (36000 * 0.2 / 3600)
+        assert_eq!(20., cap.max);
     }
 }

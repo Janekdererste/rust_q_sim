@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 use rand::rngs::ThreadRng;
 use rand::{thread_rng, Rng};
+use tracing::instrument;
 
+use crate::simulation::config;
 use crate::simulation::id::Id;
 use crate::simulation::messaging::events::EventsPublisher;
 use crate::simulation::wire_types::events::Event;
@@ -40,7 +42,11 @@ pub struct SimNode {
 }
 
 impl SimNetworkPartition {
-    pub fn from_network(global_network: &Network, partition: u32, sample_size: f32) -> Self {
+    pub fn from_network(
+        global_network: &Network,
+        partition: u32,
+        config: config::Simulation,
+    ) -> Self {
         let nodes: Vec<&Node> = global_network
             .nodes
             .iter()
@@ -62,7 +68,7 @@ impl SimNetworkPartition {
                         link,
                         partition,
                         global_network.effective_cell_size,
-                        sample_size,
+                        config,
                         global_network,
                     ),
                 )
@@ -90,22 +96,22 @@ impl SimNetworkPartition {
         link: &Link,
         partition: u32,
         effective_cell_size: f32,
-        sample_size: f32,
+        config: config::Simulation,
         global_network: &Network,
     ) -> SimLink {
         let from_part = global_network.get_node(&link.from).partition; //all_nodes.get(link.from.internal()).unwrap().partition;
         let to_part = global_network.get_node(&link.to).partition; //all_nodes.get(link.to.internal()).unwrap().partition;
 
         if from_part == to_part {
-            SimLink::Local(LocalLink::from_link(link, sample_size, effective_cell_size))
+            SimLink::Local(LocalLink::from_link(link, effective_cell_size, config))
         } else if to_part == partition {
-            let local_link = LocalLink::from_link(link, sample_size, effective_cell_size);
+            let local_link = LocalLink::from_link(link, effective_cell_size, config);
             SimLink::In(SplitInLink::new(from_part, local_link))
         } else {
             SimLink::Out(SplitOutLink::new(
                 link,
                 effective_cell_size,
-                sample_size,
+                config.sample_size,
                 to_part,
             ))
         }
@@ -210,6 +216,7 @@ impl SimNetworkPartition {
         }
     }
 
+    #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
     pub fn move_links(&mut self, now: u32) -> (Vec<Vehicle>, Vec<SplitStorage>) {
         let mut storage_cap: Vec<_> = Vec::new();
         let mut vehicles: Vec<_> = Vec::new();
@@ -277,6 +284,7 @@ impl SimNetworkPartition {
         false
     }
 
+    #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
     pub fn move_nodes(&mut self, events: &mut EventsPublisher, now: u32) -> Vec<Vehicle> {
         let mut exited_vehicles = Vec::new();
         let new_active_nodes: IntSet<_> = self
@@ -407,10 +415,11 @@ impl SimNetworkPartition {
         let in_link = links.get(in_id).unwrap();
         if let Some(veh_ref) = in_link.offers_veh(now) {
             return if let Some(next_id_int) = veh_ref.peek_next_route_element() {
-                // if the vehicle has a next link id, it should move out of the current link, if the
-                // next link is free.
+                // if the vehicle has a next link id, it should move out of the current link.
+                // if the vehicle has reached its stuck threshold, we push it to the next link regardless of the available
+                // storage capacity. Under normal conditions, we check whether the downstream link has storage capacity available
                 let out_link = links.get(&next_id_int).unwrap();
-                out_link.is_available()
+                in_link.is_veh_stuck(now) || out_link.is_available()
             } else {
                 // if there is no next link, the vehicle is done with its route and we can take it out
                 // of the network
@@ -461,7 +470,7 @@ mod tests {
         link::SimLink,
     };
     use crate::simulation::wire_types::messages::Vehicle;
-    use crate::simulation::wire_types::population::{Activity, Leg, Person, Plan, Route};
+    use crate::test_utils;
 
     use super::SimNetworkPartition;
 
@@ -497,8 +506,8 @@ mod tests {
             1,
             PartitionMethod::Metis(MetisOptions::default()),
         );
-        let mut network = SimNetworkPartition::from_network(&global_net, 0, 1.0);
-        let agent = create_agent(1, vec![0, 1, 2]);
+        let mut network = SimNetworkPartition::from_network(&global_net, 0, test_utils::config());
+        let agent = test_utils::create_agent(1, vec![0, 1, 2]);
         let vehicle = Vehicle::new(1, 0, 10., 1., Some(agent));
         network.send_veh_en_route(vehicle, None, 0);
 
@@ -541,8 +550,8 @@ mod tests {
             2,
             PartitionMethod::None,
         );
-        let mut network = SimNetworkPartition::from_network(&global_net, 0, 1.0);
-        let agent = create_agent(1, vec![0, 1, 2]);
+        let mut network = SimNetworkPartition::from_network(&global_net, 0, test_utils::config());
+        let agent = test_utils::create_agent(1, vec![0, 1, 2]);
         let vehicle = Vehicle::new(1, 0, 10., 100., Some(agent));
         network.send_veh_en_route(vehicle, None, 0);
 
@@ -571,11 +580,11 @@ mod tests {
             1,
             PartitionMethod::Metis(MetisOptions::default()),
         );
-        let mut network = SimNetworkPartition::from_network(&global_net, 0, 1.0);
+        let mut network = SimNetworkPartition::from_network(&global_net, 0, test_utils::config());
 
         // place 100 vehicles on first link
         for i in 0..100 {
-            let agent = create_agent(i, vec![0]);
+            let agent = test_utils::create_agent(i, vec![0]);
             let vehicle = Vehicle::new(i, 0, 10., 1., Some(agent));
             network.send_veh_en_route(vehicle, None, 0);
         }
@@ -608,12 +617,12 @@ mod tests {
 
         let id_1: Id<Link> = Id::get_from_ext("link1");
         let id_2: Id<Link> = Id::get_from_ext("link2");
-        let mut network = SimNetworkPartition::from_network(&global_net, 0, 1.0);
+        let mut network = SimNetworkPartition::from_network(&global_net, 0, test_utils::config());
 
         //place 10 vehicles on link2 so that it is jammed
         // vehicles are very slow, so that the first vehicle should leave link2 at t=1000
         for i in 0..10 {
-            let agent = create_agent(i, vec![id_2.internal(), 2]);
+            let agent = test_utils::create_agent(i, vec![id_2.internal(), 2]);
             let vehicle = Vehicle::new(i, 0, 1., 10., Some(agent));
             network.send_veh_en_route(vehicle, None, 0);
         }
@@ -621,7 +630,7 @@ mod tests {
         // place 1 vehicle onto link1 which has to wait until link2 has free storage cap
         // as the first vehicle leaves link2 at t=1000 this vehicle can leave link1 and enter link2 at
         // the next timestep at t=1001
-        let agent = create_agent(11, vec![id_1.internal(), 1, 2]);
+        let agent = test_utils::create_agent(11, vec![id_1.internal(), 1, 2]);
         let vehicle = Vehicle::new(11, 0, 10., 1., Some(agent));
         network.send_veh_en_route(vehicle, None, 0);
 
@@ -631,6 +640,55 @@ mod tests {
 
             let link1 = network.links.get(&id_1.internal()).unwrap();
             if (10..1001).contains(&now) {
+                // while the vehicle waits, link1 is ready to move the vehicle
+                assert!(link1.offers_veh(now).is_some());
+            } else {
+                // once the vehicle has move, link1 has nothing to offer.
+                assert!(link1.offers_veh(now).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn move_nodes_stuck_threshold() {
+        let mut publisher = EventsPublisher::new();
+        let mut global_net = Network::from_file(
+            "./assets/3-links/3-links-network.xml",
+            1,
+            PartitionMethod::Metis(MetisOptions::default()),
+        );
+        global_net.effective_cell_size = 10.;
+
+        let id_1: Id<Link> = Id::get_from_ext("link1");
+        let id_2: Id<Link> = Id::get_from_ext("link2");
+        let mut config = test_utils::config();
+        config.stuck_threshold = 10;
+        let mut network = SimNetworkPartition::from_network(&global_net, 0, config);
+
+        //place 10 vehicles on link2 so that it is jammed
+        // vehicles are very slow, so that the first vehicle should leave link2 at t=1000
+        for i in 0..10 {
+            let agent = test_utils::create_agent(i, vec![id_2.internal(), 2]);
+            let vehicle = Vehicle::new(i, 0, 1., 10., Some(agent));
+            network.send_veh_en_route(vehicle, None, 0);
+        }
+
+        // place 1 vehicle onto link1 which has to wait until link2 has free storage cap, or the stuck time is reached
+        // first vehicle on link2 leaves at t=1000, but stuck time is 10. Therefore we expect the vehicle on link1 to be
+        // pushed onto link2 at t=10+10.
+        let agent = test_utils::create_agent(11, vec![id_1.internal(), 1, 2]);
+        let vehicle = Vehicle::new(11, 0, 10., 1., Some(agent));
+        network.send_veh_en_route(vehicle, None, 0);
+
+        for now in 0..20 {
+            network.move_nodes(&mut publisher, now);
+            network.move_links(now);
+
+            let link1 = network.links.get(&id_1.internal()).unwrap();
+            // the veh is ready to leave at t=10, but the downstream link is jammed
+            // after 10 seconds at t=20, the stuck threshold is reached and the vehicle
+            // is moved
+            if (10..20).contains(&now) {
                 assert!(link1.offers_veh(now).is_some());
             } else {
                 assert!(link1.offers_veh(now).is_none());
@@ -699,25 +757,25 @@ mod tests {
             modes: Default::default(),
             partition: 0,
         });
-        let mut sim_net = SimNetworkPartition::from_network(&net, 0, 1.0);
+        let mut sim_net = SimNetworkPartition::from_network(&net, 0, test_utils::config());
 
         //place 10 vehicles on 2, so that it is jammed. The link should release 1 veh per time step.
         for i in 2000..2010 {
-            let agent = create_agent(i, vec![2]);
+            let agent = test_utils::create_agent(i, vec![2]);
             let vehicle = Vehicle::new(i, 0, 100., 1., Some(agent));
             sim_net.send_veh_en_route(vehicle, None, 0);
         }
 
         //place 1000 vehicles on 0
         for i in 0..1000 {
-            let agent = create_agent(i, vec![0, 2]);
+            let agent = test_utils::create_agent(i, vec![0, 2]);
             let vehicle = Vehicle::new(i, 0, 100., 1., Some(agent));
             sim_net.send_veh_en_route(vehicle, None, 0);
         }
 
         //place 1000 vehicles on 1
         for i in 1000..2000 {
-            let agent = create_agent(i, vec![1, 2]);
+            let agent = test_utils::create_agent(i, vec![1, 2]);
             let vehicle = Vehicle::new(i, 0, 100., 1., Some(agent));
             sim_net.send_veh_en_route(vehicle, None, 0);
         }
@@ -744,7 +802,7 @@ mod tests {
         let mut publisher = EventsPublisher::new();
 
         let split_link_id: Id<Link> = Id::get_from_ext("link-2");
-        let agent = create_agent(1, vec![split_link_id.internal()]);
+        let agent = test_utils::create_agent(1, vec![split_link_id.internal()]);
         let vehicle = Vehicle::new(1, 0, 10., 100., Some(agent));
 
         // collect empty storage caps
@@ -816,7 +874,7 @@ mod tests {
         net.add_link(out_link_1_2);
         net.add_link(out_link_3_1);
 
-        let sim_net = SimNetworkPartition::from_network(&net, 0, 1.0);
+        let sim_net = SimNetworkPartition::from_network(&net, 0, test_utils::config());
 
         let neighbors = sim_net.neighbors();
         assert_eq!(3, neighbors.len());
@@ -853,25 +911,8 @@ mod tests {
         let link2 = network.links.get_mut(1).unwrap();
         link2.partition = 1;
         vec![
-            SimNetworkPartition::from_network(network, 0, 1.0),
-            SimNetworkPartition::from_network(network, 1, 1.0),
+            SimNetworkPartition::from_network(network, 0, test_utils::config()),
+            SimNetworkPartition::from_network(network, 1, test_utils::config()),
         ]
-    }
-
-    fn create_agent(id: u64, route: Vec<u64>) -> Person {
-        let route = Route {
-            veh_id: id,
-            distance: 0.0,
-            route,
-        };
-        let leg = Leg::new(route, 0, 0, None);
-        let act = Activity::new(0., 0., 0, 1, None, None, None);
-        let mut plan = Plan::new();
-        plan.add_act(act);
-        plan.add_leg(leg);
-        let mut agent = Person::new(id, plan);
-        agent.advance_plan();
-
-        agent
     }
 }

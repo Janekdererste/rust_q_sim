@@ -312,6 +312,7 @@ mod tests {
     use crate::simulation::vehicles::garage::Garage;
     use crate::simulation::wire_types::population::{Person, Route};
     use crate::simulation::wire_types::vehicles::VehicleType;
+    use crate::test_utils;
 
     #[test]
     fn test_trip_placeholder_leg() {
@@ -328,7 +329,7 @@ mod tests {
             &mut garage,
             0,
         );
-        let sim_net = SimNetworkPartition::from_network(&network, 0, 1.0);
+        let sim_net = SimNetworkPartition::from_network(&network, 0, test_utils::config());
         let agent_id = Id::get_from_ext("100");
         let mut agent = population.persons.get_mut(&agent_id).unwrap();
 
@@ -365,7 +366,7 @@ mod tests {
             &mut garage,
             0,
         );
-        let sim_net = SimNetworkPartition::from_network(&network, 0, 1.0);
+        let sim_net = SimNetworkPartition::from_network(&network, 0, test_utils::config());
         let agent_id = Id::get_from_ext("100");
         let mut agent = population.persons.get_mut(&agent_id).unwrap();
 
@@ -420,7 +421,7 @@ mod tests {
             0,
         );
 
-        let sim_net = SimNetworkPartition::from_network(&network, 0, 1.0);
+        let sim_net = SimNetworkPartition::from_network(&network, 0, test_utils::config());
         let agent_id = Id::get_from_ext("100");
         let mut agent = population.persons.get_mut(&agent_id).unwrap();
 
@@ -511,7 +512,7 @@ mod tests {
             &mut garage,
             0,
         );
-        let sim_net = SimNetworkPartition::from_network(&network, 0, 1.0);
+        let sim_net = SimNetworkPartition::from_network(&network, 0, test_utils::config());
         let agent_id = Id::get_from_ext("100");
         let mut agent = population.persons.get_mut(&agent_id).unwrap();
 

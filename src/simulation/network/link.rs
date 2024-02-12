@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+use crate::simulation::config;
 use crate::simulation::id::Id;
 use crate::simulation::network::flow_cap::Flowcap;
 use crate::simulation::network::global_network::Node;
 use crate::simulation::network::sim_network::SplitStorage;
 use crate::simulation::network::storage_cap::StorageCap;
+use crate::simulation::network::stuck_timer::StuckTimer;
 use crate::simulation::wire_types::messages::Vehicle;
 
 use super::global_network::Link;
@@ -76,6 +78,16 @@ impl SimLink {
         }
     }
 
+    pub fn is_veh_stuck(&self, now: u32) -> bool {
+        match self {
+            SimLink::Local(ll) => ll.stuck_timer.is_stuck(now),
+            SimLink::In(il) => il.local_link.stuck_timer.is_stuck(now),
+            SimLink::Out(_) => {
+                panic!("Out links don't offer vehicles. ")
+            }
+        }
+    }
+
     pub fn is_available(&self) -> bool {
         match self {
             SimLink::Local(ll) => ll.is_available(),
@@ -141,6 +153,7 @@ pub struct LocalLink {
     free_speed: f32,
     storage_cap: StorageCap,
     flow_cap: Flowcap,
+    stuck_timer: StuckTimer,
     pub from: Id<Node>,
     pub to: Id<Node>,
 }
@@ -152,15 +165,15 @@ struct VehicleQEntry {
 }
 
 impl LocalLink {
-    pub fn from_link(link: &Link, sample_size: f32, effective_cell_size: f32) -> Self {
+    pub fn from_link(link: &Link, effective_cell_size: f32, config: config::Simulation) -> Self {
         LocalLink::new(
             link.id.clone(),
             link.capacity,
             link.freespeed,
             link.permlanes,
             link.length,
-            sample_size,
             effective_cell_size,
+            config,
             link.from.clone(),
             link.to.clone(),
         )
@@ -173,7 +186,8 @@ impl LocalLink {
             length: 1.0,
             free_speed: 1.0,
             storage_cap: StorageCap::new(0., 1., 1., 1.0, 7.5),
-            flow_cap: Flowcap::new(1.0),
+            flow_cap: Flowcap::new(3600., 1.0),
+            stuck_timer: StuckTimer::new(u32::MAX),
             from,
             to,
         }
@@ -185,17 +199,16 @@ impl LocalLink {
         free_speed: f32,
         perm_lanes: f32,
         length: f64,
-        sample_size: f32,
         effective_cell_size: f32,
+        config: config::Simulation,
         from: Id<Node>,
         to: Id<Node>,
     ) -> Self {
-        let flow_cap_s = capacity_h * sample_size / 3600.;
         let storage_cap = StorageCap::new(
             length,
             perm_lanes,
-            flow_cap_s,
-            sample_size,
+            capacity_h,
+            config.sample_size,
             effective_cell_size,
         );
 
@@ -205,7 +218,8 @@ impl LocalLink {
             length,
             free_speed,
             storage_cap,
-            flow_cap: Flowcap::new(flow_cap_s),
+            flow_cap: Flowcap::new(capacity_h, config.sample_size),
+            stuck_timer: StuckTimer::new(config.stuck_threshold),
             from,
             to,
         }
@@ -228,7 +242,7 @@ impl LocalLink {
         let veh = self.q.pop_front().unwrap_or_else(|| panic!("There was no vehicle in the queue. Use 'offers_veh' to test if a vehicle is present first."));
         self.flow_cap.consume_capacity(veh.vehicle.pce);
         self.storage_cap.release(veh.vehicle.pce);
-
+        self.stuck_timer.reset();
         veh.vehicle
     }
 
@@ -246,6 +260,7 @@ impl LocalLink {
         // peek if fist vehicle in queue can leave
         if let Some(entry) = self.q.front() {
             if entry.earliest_exit_time <= now {
+                self.stuck_timer.start(now);
                 return Some(&entry.vehicle);
             }
         }
@@ -293,11 +308,10 @@ impl SplitOutLink {
         sample_size: f32,
         to_part: u32,
     ) -> SplitOutLink {
-        let flow_cap_s = link.capacity * sample_size / 3600.;
         let storage_cap = StorageCap::new(
             link.length,
             link.permlanes,
-            flow_cap_s,
+            link.capacity,
             sample_size,
             effective_cell_size,
         );
@@ -364,9 +378,11 @@ impl SplitInLink {
 mod sim_link_tests {
     use assert_approx_eq::assert_approx_eq;
 
+    use crate::simulation::config;
     use crate::simulation::id::Id;
     use crate::simulation::network::link::{LocalLink, SimLink};
     use crate::simulation::wire_types::messages::Vehicle;
+    use crate::test_utils;
     use crate::test_utils::create_agent;
 
     #[test]
@@ -377,8 +393,8 @@ mod sim_link_tests {
             10.,
             3.,
             100.,
-            1.0,
             7.5,
+            test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -399,8 +415,8 @@ mod sim_link_tests {
             10.,
             3.,
             100.,
-            1.0,
             7.5,
+            test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -430,8 +446,8 @@ mod sim_link_tests {
             10.,
             3.,
             100.,
-            1.0,
             7.5,
+            test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -470,8 +486,8 @@ mod sim_link_tests {
             10.,
             3.,
             100.,
-            1.0,
             7.5,
+            test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -500,8 +516,8 @@ mod sim_link_tests {
             1.,
             1.,
             15.0,
-            1.,
             10.0,
+            test_utils::config(),
             Id::new_internal(0),
             Id::new_internal(0),
         ));
@@ -526,66 +542,85 @@ mod sim_link_tests {
         let popped_vehicle2 = link.pop_veh();
         assert_eq!(id2, popped_vehicle2.id);
     }
-}
-
-#[cfg(test)]
-mod local_link_tests {
-    use assert_approx_eq::assert_approx_eq;
-
-    use crate::simulation::id::Id;
-    use crate::simulation::network::link::LocalLink;
 
     #[test]
-    fn storage_cap_initialized_default() {
-        let link = LocalLink::new(
-            Id::new_internal(1),
+    pub fn stuck_time() {
+        let stuck_threshold = 10;
+        let config = config::Simulation {
+            start_time: 0,
+            end_time: 0,
+            sample_size: 1.0,
+            stuck_threshold,
+        };
+        let mut link = SimLink::Local(LocalLink::new(
+            Id::create("stuck-link"),
             1.,
             1.,
-            3.,
-            100.,
-            0.2,
+            1.0,
+            10.0,
             7.5,
-            Id::new_internal(1),
-            Id::new_internal(2),
-        );
+            config,
+            Id::create("from-node"),
+            Id::create("to-node"),
+        ));
 
-        // we expect a storage size of 100 * 3 * 0.2 / 7.5 = 8
-        assert_approx_eq!(8., link.storage_cap.max());
+        let vehicle = Vehicle::new(1, 0, 10., 1., None);
+        link.push_veh(vehicle, 0);
+
+        // earliest exit is at 10. Therefore this call should not trigger the stuck timer
+        let offers = link.offers_veh(9);
+        assert!(offers.is_none());
+        assert!(!link.is_veh_stuck(9));
+
+        // this should trigger the stuck timer
+        let expected_timer_start = 10;
+        let offers = link.offers_veh(expected_timer_start);
+        assert!(offers.is_some());
+        assert!(!link.is_veh_stuck(expected_timer_start + stuck_threshold - 1));
+        assert!(link.is_veh_stuck(expected_timer_start + stuck_threshold));
     }
 
     #[test]
-    fn storage_cap_initialized_large_flow() {
-        let link = LocalLink::new(
-            Id::new_internal(1),
-            360000.,
+    pub fn stuck_time_reset() {
+        let stuck_threshold = 10;
+        let earliest_exit: u32 = 10;
+        let config = config::Simulation {
+            start_time: 0,
+            end_time: 0,
+            sample_size: 1.0,
+            stuck_threshold,
+        };
+        let mut link = SimLink::Local(LocalLink::new(
+            Id::create("stuck-link"),
+            36000.,
             1.,
-            3.,
-            100.,
-            0.2,
+            1.0,
+            earliest_exit as f64,
             7.5,
-            Id::new_internal(1),
-            Id::new_internal(2),
-        );
+            config,
+            Id::create("from-node"),
+            Id::create("to-node"),
+        ));
 
-        // we expect a storage size of 20. because it the flow cap/s is 20 (36000 * 0.2 / 3600)
-        assert_eq!(20., link.storage_cap.max());
-    }
+        let vehicle1 = Vehicle::new(1, 0, earliest_exit as f32, 1., None);
+        let vehicle2 = Vehicle::new(2, 0, earliest_exit as f32, 1., None);
+        link.push_veh(vehicle1, 0);
+        link.push_veh(vehicle2, 0);
 
-    #[test]
-    fn flow_cap_initialized() {
-        let link = LocalLink::new(
-            Id::new_internal(1),
-            3600.,
-            1.,
-            3.,
-            100.,
-            0.2,
-            7.5,
-            Id::new_internal(1),
-            Id::new_internal(2),
-        );
-
-        assert_eq!(0.2, link.flow_cap.capacity())
+        // trigger stuck timer
+        assert!(link.offers_veh(earliest_exit).is_some());
+        // check that stuck timer works as expected
+        let now = earliest_exit + stuck_threshold;
+        assert!(link.is_veh_stuck(now));
+        // fetch the stuck vehicle, which should reset the timer, so that the next veh is not stuck
+        let _ = link.pop_veh();
+        assert!(!link.is_veh_stuck(now));
+        // the next vehicle should be ready to leave the link as well.
+        // This call should trigger the stuck timer again.
+        assert!(link.offers_veh(now).is_some());
+        let now = now + stuck_threshold;
+        assert!(!link.is_veh_stuck(now - 1));
+        assert!(link.is_veh_stuck(now));
     }
 }
 
