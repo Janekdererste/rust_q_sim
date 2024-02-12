@@ -351,6 +351,7 @@ impl MpiSimCommunicator {
             .collect()
     }
 
+    #[instrument(level = "trace", skip_all, fields(rank = self.rank()))]
     fn deserialize_travel_times(
         all_travel_times_messages: Vec<u8>,
         lengths: Vec<i32>,

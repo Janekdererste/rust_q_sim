@@ -335,7 +335,8 @@ fn default_profiling_level() -> String {
 #[cfg(test)]
 mod tests {
     use crate::simulation::config::{
-        Config, EdgeWeight, MetisOptions, PartitionMethod, Partitioning, VertexWeight,
+        Config, EdgeWeight, MetisOptions, Output, PartitionMethod, Partitioning, Profiling,
+        ProfilingLevel, VertexWeight,
     };
 
     #[test]
@@ -356,6 +357,18 @@ mod tests {
             .modules
             .borrow_mut()
             .insert("partitioning".to_string(), Box::new(partitioning));
+
+        let output = Output {
+            output_dir: "./".to_string(),
+            profiling: Profiling::CSV(ProfilingLevel {
+                level: "INFO".to_string(),
+            }),
+        };
+
+        config
+            .modules
+            .borrow_mut()
+            .insert("output".to_string(), Box::new(output));
 
         let yaml = serde_yaml::to_string(&config).expect("Failed to serialize yaml");
 
