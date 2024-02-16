@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use nohash_hasher::IntMap;
-use tracing::{debug, info};
+use tracing::{debug, info, span, Level};
 
 use crate::simulation::id::Id;
 use crate::simulation::messaging::communication::communicators::SimCommunicator;
@@ -66,6 +66,14 @@ impl<C: SimCommunicator> NetworkRouter for TravelTimesCollectingAltRouter<C> {
         //compute all updates of partition
         let send_package = self.get_travel_times_by_mode_to_send(&collected_travel_times, now);
 
+        let send_span = span!(
+            Level::TRACE,
+            "communicate_all",
+            rank = self.traffic_message_broker.rank(),
+            now = now
+        );
+        let send_time = send_span.enter();
+
         let received_messages_by_veh_type_id = send_package
             .into_iter()
             .map(|(mode, updates)| {
@@ -73,6 +81,8 @@ impl<C: SimCommunicator> NetworkRouter for TravelTimesCollectingAltRouter<C> {
                 (mode, received_messages)
             })
             .collect::<BTreeMap<u64, Vec<TravelTimesMessage>>>();
+
+        drop(send_time);
 
         //handle travel times
         for (veh_type_id, message) in received_messages_by_veh_type_id.into_iter() {
