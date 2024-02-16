@@ -50,7 +50,7 @@ impl Replanner for ReRouteTripReplanner {
 
     // #[tracing::instrument(level = "trace", skip(self, agent, garage))]
     fn replan(&self, _now: u32, agent: &mut Person, garage: &Garage) {
-        let leg_type = Self::get_leg_type(agent, garage);
+        /*let leg_type = Self::get_leg_type(agent, garage);
         if leg_type == LegType::TripPlaceholder {
             self.insert_access_egress(agent, garage);
         }
@@ -63,7 +63,7 @@ impl Replanner for ReRouteTripReplanner {
             }
             LegType::MainNetwork => self.replan_main(agent, garage),
             LegType::MainTeleported => self.replan_teleported_main(agent, garage),
-        };
+        };*/
     }
 }
 
