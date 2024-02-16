@@ -28,6 +28,7 @@ impl<R: Read + Seek> StatefulReader<R> {
     }
 }
 
+#[allow(dead_code)]
 fn main() {
     init_std_out_logging();
 

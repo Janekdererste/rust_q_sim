@@ -9,12 +9,10 @@ use rust_q_sim::simulation::messaging::events::EventsSubscriber;
 use rust_q_sim::simulation::network::global_network::Network;
 use rust_q_sim::simulation::wire_types::events::event::Type;
 use rust_q_sim::simulation::wire_types::events::Event;
-use rust_q_sim::simulation::wire_types::population::Activity;
 use std::any::Any;
 use std::collections::HashMap;
 use std::io::Error;
 use std::path::PathBuf;
-use tracing::warn;
 
 struct StatefulEventsReader {
     output_path: PathBuf,

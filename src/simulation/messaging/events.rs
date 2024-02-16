@@ -92,7 +92,7 @@ impl EventsPublisher {
         }
     }
 
-    // #[instrument(skip_all, level = "trace")]
+    #[instrument(skip_all, level = "trace")]
     pub fn finish(&mut self) {
         for handler in self.handlers.iter_mut() {
             handler.finish();
