@@ -222,7 +222,7 @@ impl ReRouteTripReplanner {
         );
     }
 
-    // #[tracing::instrument(level = "trace", skip(self, from_act, to_act, veh_type_id))]
+    #[tracing::instrument(level = "trace", skip(self, from_act, to_act, veh_type_id))]
     fn find_route(
         &self,
         from_act: &Activity,
@@ -262,7 +262,7 @@ impl ReRouteTripReplanner {
                     .unwrap()
                     .lod,
             )
-            .expect("Unknown level of detail");
+                .expect("Unknown level of detail");
             match level_of_detail {
                 LevelOfDetail::Network => LegType::MainNetwork,
                 LevelOfDetail::Teleported => LegType::MainTeleported,
@@ -277,7 +277,7 @@ impl ReRouteTripReplanner {
                     .unwrap()
                     .lod,
             )
-            .expect("Unknown level of detail");
+                .expect("Unknown level of detail");
             match level_of_detail {
                 LevelOfDetail::Network => LegType::TripPlaceholder,
                 LevelOfDetail::Teleported => LegType::MainTeleported,
