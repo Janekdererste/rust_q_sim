@@ -43,8 +43,7 @@ impl SimCommunicator for DummySimCommunicator {
         _on_msg: F,
     ) where
         F: FnMut(SyncMessage),
-    {
-    }
+    {}
 
     fn send_receive_travel_times(
         &self,
@@ -197,7 +196,7 @@ pub struct MpiSimCommunicator {
 }
 
 impl SimCommunicator for MpiSimCommunicator {
-    #[instrument(level = "trace", skip(self, on_msg), fields(rank = self.rank()))]
+    //#[instrument(level = "trace", skip(self, on_msg), fields(rank = self.rank()))]
     fn send_receive_vehicles<F>(
         &self,
         out_messages: HashMap<u32, SyncMessage>,
