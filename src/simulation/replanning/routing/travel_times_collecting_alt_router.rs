@@ -84,10 +84,17 @@ impl<C: SimCommunicator> NetworkRouter for TravelTimesCollectingAltRouter<C> {
 
         drop(send_time);
 
+        let handle_span = span!(
+            Level::TRACE,
+            "handle_all",
+            rank = self.traffic_message_broker.rank(),
+            now = now
+        );
         //handle travel times
         for (veh_type_id, message) in received_messages_by_veh_type_id.into_iter() {
             self.handle_traffic_info_messages(now, veh_type_id, message);
         }
+        drop(handle_span);
 
         //reset travel times
         events
