@@ -5,7 +5,7 @@ use crate::simulation::config;
 use crate::simulation::id::Id;
 use crate::simulation::network::flow_cap::Flowcap;
 use crate::simulation::network::global_network::Node;
-use crate::simulation::network::sim_network::SplitStorage;
+use crate::simulation::network::sim_network::StorageUpdate;
 use crate::simulation::network::storage_cap::StorageCap;
 use crate::simulation::network::stuck_timer::StuckTimer;
 use crate::simulation::wire_types::messages::Vehicle;
@@ -324,14 +324,13 @@ impl SplitOutLink {
         }
     }
 
-    pub fn set_used_storage_cap(&mut self, value: f32) {
-        self.storage_cap.clear();
-        self.storage_cap.consume(value);
+    pub fn apply_storage_cap_update(&mut self, released: f32) {
+        self.storage_cap.consume(-released);
         self.storage_cap.apply_updates();
     }
 
     pub fn take_veh(&mut self) -> VecDeque<Vehicle> {
-        self.storage_cap.clear();
+        self.storage_cap.apply_updates();
         std::mem::take(&mut self.q)
     }
 
@@ -355,13 +354,12 @@ impl SplitInLink {
         }
     }
 
-    pub fn storage_cap_updates(&self) -> Option<SplitStorage> {
-        if self.has_updates() {
-            let used = self.local_link.storage_cap.currently_used()
-                - self.local_link.storage_cap.released();
-            Some(SplitStorage {
+    pub fn storage_cap_updates(&self) -> Option<StorageUpdate> {
+        if self.has_released() {
+            let released = self.local_link.storage_cap.released();
+            Some(StorageUpdate {
                 link_id: self.local_link.id.internal(),
-                used,
+                released,
                 from_part: self.from_part,
             })
         } else {
@@ -369,8 +367,8 @@ impl SplitInLink {
         }
     }
 
-    pub fn has_updates(&self) -> bool {
-        self.local_link.storage_cap.consumed() > 0. || self.local_link.storage_cap.released() > 0.
+    pub fn has_released(&self) -> bool {
+        self.local_link.storage_cap.released() > 0.
     }
 }
 
@@ -663,10 +661,29 @@ mod out_link_tests {
             let taken_2 = result.pop_front().unwrap();
             assert_eq!(id2, taken_2.id);
 
-            // make sure storage capacity is released
-            assert_eq!(0., link.used_storage());
+            // make sure storage capacity is not released
+            assert_eq!(2., link.used_storage());
         } else {
             panic!("expected out link")
         }
+    }
+
+    #[test]
+    fn update_storage_caps() {
+        // set up the link, so that we consume two units of storage.
+        let mut cap = StorageCap::new(100., 1., 1., 1., 1.);
+        cap.consume(2.);
+        cap.apply_updates();
+        let mut out_link = SplitOutLink {
+            id: Id::new_internal(0),
+            to_part: 1,
+            q: Default::default(),
+            storage_cap: cap,
+        };
+
+        assert_eq!(2., out_link.storage_cap.currently_used());
+        out_link.apply_storage_cap_update(2.);
+
+        assert_eq!(0., out_link.storage_cap.currently_used());
     }
 }

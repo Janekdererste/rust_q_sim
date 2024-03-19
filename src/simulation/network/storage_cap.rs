@@ -53,10 +53,6 @@ impl StorageCap {
         self.released
     }
 
-    pub fn consumed(&self) -> f32 {
-        self.consumed
-    }
-
     /// Consumes storage capacity on a link
     ///
     /// This method should be called when a vehicle enters a link.
@@ -80,13 +76,6 @@ impl StorageCap {
         self.used = 0f32.max(self.currently_used() - self.released);
         self.released = 0.0;
         self.consumed = 0.0;
-    }
-
-    /// Clears used, consumed and released storage capacity of a link. This is used when updating SplitOutLinks
-    pub fn clear(&mut self) {
-        self.used = 0.;
-        self.consumed = 0.;
-        self.released = 0.;
     }
 
     /// Tests whether there is storage capacity available on the link.

@@ -235,20 +235,21 @@ where
 
     #[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
     fn move_links(&mut self, now: u32) {
-        let (vehicles, storage_cap) = self.network.move_links(now);
+        let (vehicles, storage_cap_updates) = self.network.move_links(now);
 
         for veh in vehicles {
             self.net_message_broker.add_veh(veh, now);
         }
 
-        for cap in storage_cap {
-            self.net_message_broker.add_cap(cap, now);
+        for cap in storage_cap_updates {
+            self.net_message_broker.add_cap_update(cap, now);
         }
 
         let sync_messages = self.net_message_broker.send_recv(now);
 
         for msg in sync_messages {
-            self.network.update_storage_caps(msg.storage_capacities);
+            self.network
+                .apply_storage_cap_updates(msg.storage_capacities);
 
             for veh in msg.vehicles {
                 let veh_type_id = Id::get(veh.r#type);
