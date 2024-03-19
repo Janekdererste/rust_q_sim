@@ -17,10 +17,10 @@ use super::{
     link::{LocalLink, SimLink, SplitInLink, SplitOutLink},
 };
 
-pub struct SplitStorage {
+pub struct StorageUpdate {
     pub link_id: u64,
     pub from_part: u32,
-    pub used: f32,
+    pub released: f32,
 }
 
 #[derive(Debug)]
@@ -206,10 +206,10 @@ impl SimNetworkPartition {
         Self::activate_link(&mut self.active_links, link.id().internal());
     }
 
-    pub fn update_storage_caps(&mut self, storage_caps: Vec<StorageCap>) {
+    pub fn apply_storage_cap_updates(&mut self, storage_caps: Vec<StorageCap>) {
         for cap in storage_caps {
             if let SimLink::Out(link) = self.links.get_mut(&cap.link_id).unwrap() {
-                link.set_used_storage_cap(cap.value);
+                link.apply_storage_cap_update(cap.value);
             } else {
                 panic!("only expecting ids for split out links ")
             }
@@ -217,8 +217,8 @@ impl SimNetworkPartition {
     }
 
     // #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
-    pub fn move_links(&mut self, now: u32) -> (Vec<Vehicle>, Vec<SplitStorage>) {
-        let mut storage_cap: Vec<_> = Vec::new();
+    pub fn move_links(&mut self, now: u32) -> (Vec<Vehicle>, Vec<StorageUpdate>) {
+        let mut storage_cap_updates: Vec<_> = Vec::new();
         let mut vehicles: Vec<_> = Vec::new();
         let mut deactivate: IntSet<u64> = IntSet::default();
 
@@ -227,7 +227,7 @@ impl SimNetworkPartition {
             let is_active = match link {
                 SimLink::Local(ll) => Self::move_local_link(ll, &mut self.active_nodes, now),
                 SimLink::In(il) => {
-                    Self::move_in_link(il, &mut self.active_nodes, &mut storage_cap, now)
+                    Self::move_in_link(il, &mut self.active_nodes, &mut storage_cap_updates, now)
                 }
                 SimLink::Out(ol) => Self::move_out_link(ol, &mut vehicles),
             };
@@ -244,7 +244,7 @@ impl SimNetworkPartition {
         // vehicles leaving this partition are no longer part of the veh count
         self.veh_counter -= vehicles.len();
 
-        (vehicles, storage_cap)
+        (vehicles, storage_cap_updates)
     }
 
     fn move_local_link(link: &mut LocalLink, active_nodes: &mut IntSet<u64>, now: u32) -> bool {
@@ -263,14 +263,14 @@ impl SimNetworkPartition {
     fn move_in_link(
         link: &mut SplitInLink,
         active_nodes: &mut IntSet<u64>,
-        storage_caps: &mut Vec<SplitStorage>,
+        storage_cap_updates: &mut Vec<StorageUpdate>,
         now: u32,
     ) -> bool {
         // if anything has changed on the link, we want to report the updated storage capacity to the
         // upstream partition. This must be done before we call 'move_local' link which erases the book
         // keeping of what was released and consumed during the current simulation time step.
-        if let Some(split) = link.storage_cap_updates() {
-            storage_caps.push(split);
+        if let Some(cap_update) = link.storage_cap_updates() {
+            storage_cap_updates.push(cap_update);
         }
 
         Self::move_local_link(&mut link.local_link, active_nodes, now)
@@ -810,19 +810,14 @@ mod tests {
         assert_eq!(0, storage_caps.len());
 
         // now place vehicle on network and collect storage caps again.
-        // as things have changed, the used storage capacity should be
-        // reported by the split link.
+        // in links only report their releases. Therfore, no storage cap
+        // updates should be collected
         net2.send_veh_en_route(vehicle, None, 0);
-        let (_, storage_caps) = net2.move_links(0);
-        assert_eq!(1, storage_caps.len());
-        let storage_cap = storage_caps.first().unwrap();
-        assert_eq!(split_link_id.internal(), storage_cap.link_id);
-        assert_approx_eq!(100., storage_cap.used, 0.0001);
 
         // now, in the next time step, nothing has changed on the link. It should therefore not
         // report any storage capacities
-        let _ = net2.move_nodes(&mut publisher, 1);
-        let (_, storage_caps) = net2.move_links(1);
+        let _ = net2.move_nodes(&mut publisher, 0);
+        let (_, storage_caps) = net2.move_links(0);
         assert_eq!(0, storage_caps.len());
 
         // Now, test whether storage caps are emitted to upstream partitions as well
@@ -836,7 +831,7 @@ mod tests {
         assert_eq!(1, storage_caps.len());
         let storage_cap = storage_caps.first().unwrap();
         assert_eq!(split_link_id.internal(), storage_cap.link_id);
-        assert_approx_eq!(0., storage_cap.used, 0.00001);
+        assert_approx_eq!(100., storage_cap.released, 0.00001);
     }
 
     #[test]

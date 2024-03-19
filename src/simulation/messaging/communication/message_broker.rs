@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::simulation::messaging::communication::communicators::SimCommunicator;
 use crate::simulation::network::global_network::Network;
-use crate::simulation::network::sim_network::{SimNetworkPartition, SplitStorage};
+use crate::simulation::network::sim_network::{SimNetworkPartition, StorageUpdate};
 use crate::simulation::wire_types::messages::{
     StorageCap, SyncMessage, TravelTimesMessage, Vehicle,
 };
@@ -87,7 +87,7 @@ where
         message.add_veh(vehicle);
     }
 
-    pub fn add_cap(&mut self, cap: SplitStorage, now: u32) {
+    pub fn add_cap_update(&mut self, cap: StorageUpdate, now: u32) {
         let rank = self.rank();
         let message = self
             .out_messages
@@ -95,7 +95,7 @@ where
             .or_insert_with(|| SyncMessage::new(now, rank, cap.from_part));
         message.add_storage_cap(StorageCap {
             link_id: cap.link_id,
-            value: cap.used,
+            value: cap.released,
         });
     }
 
@@ -177,7 +177,7 @@ mod tests {
         NetMessageBroker, TravelTimesMessageBroker,
     };
     use crate::simulation::network::global_network::{Link, Network, Node};
-    use crate::simulation::network::sim_network::{SimNetworkPartition, SplitStorage};
+    use crate::simulation::network::sim_network::{SimNetworkPartition, StorageUpdate};
     use crate::simulation::wire_types::messages::{TravelTimesMessage, Vehicle};
     use crate::test_utils::create_agent;
 
@@ -374,10 +374,10 @@ mod tests {
             let mut broker = create_net_message_broker(communicator);
             // add a storage cap message for link 4, which connects parts 1 -> 2
             if broker.rank() == 2 {
-                broker.add_cap(
-                    SplitStorage {
+                broker.add_cap_update(
+                    StorageUpdate {
                         link_id: 4,
-                        used: 42.0,
+                        released: 42.0,
                         from_part: 1,
                     },
                     0,
