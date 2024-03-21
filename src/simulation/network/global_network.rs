@@ -25,6 +25,7 @@ pub struct Node {
     pub in_links: Vec<Id<Link>>,
     pub out_links: Vec<Id<Link>>,
     pub partition: u32,
+    pub cmp_weight: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -159,7 +160,7 @@ impl Network {
 }
 
 impl Node {
-    pub fn new(id: Id<Node>, x: f64, y: f64, part: u32) -> Self {
+    pub fn new(id: Id<Node>, x: f64, y: f64, part: u32, cmp_weight: u32) -> Self {
         Node {
             id,
             x,
@@ -167,6 +168,7 @@ impl Node {
             in_links: Vec::new(),
             out_links: Vec::new(),
             partition: part,
+            cmp_weight,
         }
     }
 }
@@ -229,7 +231,7 @@ mod tests {
     fn add_node() {
         let mut network = Network::new();
         let id = Id::create("node-id");
-        let node = Node::new(id.clone(), 1., 1., 0);
+        let node = Node::new(id.clone(), 1., 1., 0, 1);
 
         assert_eq!(0, network.nodes.len());
         network.add_node(node);
@@ -242,8 +244,8 @@ mod tests {
     fn add_node_reject_duplicate() {
         let mut network = Network::new();
         let id = Id::create("node-id");
-        let node = Node::new(id.clone(), 1., 1., 0);
-        let duplicate = Node::new(id.clone(), 2., 2., 0);
+        let node = Node::new(id.clone(), 1., 1., 0, 1);
+        let duplicate = Node::new(id.clone(), 2., 2., 0, 1);
 
         assert_eq!(0, network.nodes.len());
         network.add_node(node);
@@ -253,8 +255,8 @@ mod tests {
     #[test]
     fn add_link() {
         let mut network = Network::new();
-        let from = Node::new(Id::create("from"), 0., 0., 0);
-        let to = Node::new(Id::create("to"), 3., 4., 0);
+        let from = Node::new(Id::create("from"), 0., 0., 0, 1);
+        let to = Node::new(Id::create("to"), 3., 4., 0, 1);
         let id = Id::create("link-id");
         let link = Link::new_with_default(id.clone(), &from, &to);
 
@@ -283,8 +285,8 @@ mod tests {
     #[should_panic]
     fn add_link_reject_duplicate() {
         let mut network = Network::new();
-        let from = Node::new(Id::create("from"), 0., 0., 0);
-        let to = Node::new(Id::create("to"), 3., 4., 0);
+        let from = Node::new(Id::create("from"), 0., 0., 0, 1);
+        let to = Node::new(Id::create("to"), 3., 4., 0, 1);
         let id = Id::create("link-id");
         let link = Link::new_with_default(id.clone(), &from, &to);
         let duplicate = Link::new_with_default(id.clone(), &from, &to);
@@ -340,8 +342,8 @@ mod tests {
 
     #[test]
     fn link_new_with_default() {
-        let from = Node::new(Id::create("from"), 0., 0., 0);
-        let to = Node::new(Id::create("to"), 3., 4., 0);
+        let from = Node::new(Id::create("from"), 0., 0., 0, 1);
+        let to = Node::new(Id::create("to"), 3., 4., 0, 1);
         let id = Id::create("link-id");
         let link = Link::new_with_default(id.clone(), &from, &to);
 

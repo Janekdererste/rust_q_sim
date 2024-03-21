@@ -77,6 +77,9 @@ fn add_vwgt(network: &Network, options: &MetisOptions, vwgt: &mut Vec<Idx>, node
             VertexWeight::Constant => {
                 vwgt.push(1);
             }
+            VertexWeight::PreComputed => {
+                vwgt.push(node.cmp_weight as Idx);
+            }
         }
     }
 }
@@ -102,8 +105,8 @@ mod tests {
         let mut net = Network::new();
         let from_id = Id::create("from");
         let to_id = Id::create("to");
-        net.add_node(Node::new(from_id.clone(), 0., 0., 0));
-        net.add_node(Node::new(to_id.clone(), 100., 0., 0));
+        net.add_node(Node::new(from_id.clone(), 0., 0., 0, 1));
+        net.add_node(Node::new(to_id.clone(), 100., 0., 0, 1));
         let link_id = Id::create("link");
         net.add_link(Link::new_with_default(
             link_id,

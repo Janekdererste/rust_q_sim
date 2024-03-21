@@ -275,6 +275,7 @@ pub enum VertexWeight {
     InLinkCapacity,
     InLinkCount,
     Constant,
+    PreComputed,
 }
 
 #[derive(PartialEq, Debug, ValueEnum, Clone, Copy, Serialize, Deserialize)]
@@ -317,7 +318,7 @@ impl MetisOptions {
 
     pub fn ufactor(&self) -> usize {
         let val = (self.imbalance_factor * 1000.) as usize;
-        if val <= 0 {
+        if val == 0 {
             return 1;
         };
         val

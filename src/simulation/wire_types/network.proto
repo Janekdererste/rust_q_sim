@@ -13,6 +13,7 @@ message Node {
   double x = 2;
   double y = 3;
   uint32 partition = 4;
+  uint32 cmpWeight = 5;
 }
 
 message Link {
