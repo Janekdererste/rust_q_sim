@@ -49,7 +49,7 @@ impl Replanner for ReRouteTripReplanner {
         self.network_router.next_time_step(now, events)
     }
 
-    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    // #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
     fn replan(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let leg_type = Self::get_leg_type(agent, garage);
         if leg_type == LegType::TripPlaceholder {
@@ -60,10 +60,10 @@ impl Replanner for ReRouteTripReplanner {
             // in case of trip placeholder: we have inserted access and egress legs before
             // => we must now replan the respective access leg
             LegType::AccessEgress | LegType::TripPlaceholder => {
-                self.replan_access_egress(agent, garage)
+                self.replan_access_egress(_now, agent, garage)
             }
-            LegType::MainNetwork => self.replan_main(agent, garage),
-            LegType::MainTeleported => self.replan_teleported_main(agent, garage),
+            LegType::MainNetwork => self.replan_main(_now, agent, garage),
+            LegType::MainTeleported => self.replan_teleported_main(_now, agent, garage),
         };
     }
 }
@@ -136,7 +136,8 @@ impl ReRouteTripReplanner {
         agent.replace_next_leg(vec![access, agent.next_leg().clone(), egress]);
     }
 
-    fn replan_main(&self, agent: &mut Person, garage: &Garage) {
+    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    fn replan_main(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
 
         let veh_type_id = garage
@@ -164,7 +165,8 @@ impl ReRouteTripReplanner {
         );
     }
 
-    fn replan_access_egress(&self, agent: &mut Person, garage: &Garage) {
+    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    fn replan_access_egress(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
         let next_act = agent.next_act();
 
@@ -203,7 +205,8 @@ impl ReRouteTripReplanner {
         );
     }
 
-    fn replan_teleported_main(&self, agent: &mut Person, garage: &Garage) {
+    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    fn replan_teleported_main(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
         let next_act = agent.next_act();
 
