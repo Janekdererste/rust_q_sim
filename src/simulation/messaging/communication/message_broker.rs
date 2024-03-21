@@ -503,7 +503,7 @@ mod tests {
     }
 
     fn create_node(id: u64, partition: u32) -> Node {
-        let node = Node::new(Id::new_internal(id), 0., 0., partition);
+        let node = Node::new(Id::new_internal(id), 0., 0., partition, 1);
         node
     }
 

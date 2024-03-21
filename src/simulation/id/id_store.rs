@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, Write};
 use std::path::Path;
@@ -25,7 +26,11 @@ enum IdCompression {
 
 fn serialize_to_file(store: &IdStore, file_path: &Path, compression: IdCompression) {
     info!("Starting writing IdStore to file {file_path:?}");
+    // Create the file and all necessary directories
+    let prefix = file_path.parent().unwrap();
+    fs::create_dir_all(prefix).unwrap();
     let file = File::create(file_path).unwrap();
+
     let mut file_writer = BufWriter::new(file);
     serialize(store, &mut file_writer, compression);
     info!("Finished writing IdStore to file {file_path:?}");
