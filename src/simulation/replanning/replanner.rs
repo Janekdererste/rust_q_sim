@@ -48,7 +48,7 @@ impl Replanner for ReRouteTripReplanner {
         self.network_router.next_time_step(now, events)
     }
 
-    // #[tracing::instrument(level = "trace", skip(self, agent, garage))]
+    #[tracing::instrument(level = "trace", skip(self, agent, garage))]
     fn replan(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let leg_type = Self::get_leg_type(agent, garage);
         if leg_type == LegType::TripPlaceholder {
@@ -132,7 +132,7 @@ impl ReRouteTripReplanner {
         agent.replace_next_leg(vec![access, agent.next_leg().clone(), egress]);
     }
 
-    // #[tracing::instrument(level = "trace", skip(self, agent, garage))]
+    #[tracing::instrument(level = "trace", skip(self, agent, garage))]
     fn replan_main(&self, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
 
@@ -262,7 +262,7 @@ impl ReRouteTripReplanner {
                     .unwrap()
                     .lod,
             )
-                .expect("Unknown level of detail");
+            .expect("Unknown level of detail");
             match level_of_detail {
                 LevelOfDetail::Network => LegType::MainNetwork,
                 LevelOfDetail::Teleported => LegType::MainTeleported,
@@ -277,7 +277,7 @@ impl ReRouteTripReplanner {
                     .unwrap()
                     .lod,
             )
-                .expect("Unknown level of detail");
+            .expect("Unknown level of detail");
             match level_of_detail {
                 LevelOfDetail::Network => LegType::TripPlaceholder,
                 LevelOfDetail::Teleported => LegType::MainTeleported,

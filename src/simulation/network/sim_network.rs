@@ -216,7 +216,7 @@ impl SimNetworkPartition {
         }
     }
 
-    // #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
+    #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
     pub fn move_links(&mut self, now: u32) -> (Vec<Vehicle>, Vec<StorageUpdate>) {
         let mut storage_cap_updates: Vec<_> = Vec::new();
         let mut vehicles: Vec<_> = Vec::new();
@@ -284,7 +284,7 @@ impl SimNetworkPartition {
         false
     }
 
-    // #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
+    #[instrument(level = "trace", skip(self), fields(rank = self.partition))]
     pub fn move_nodes(&mut self, events: &mut EventsPublisher, now: u32) -> Vec<Vehicle> {
         let mut exited_vehicles = Vec::new();
         let new_active_nodes: IntSet<_> = self

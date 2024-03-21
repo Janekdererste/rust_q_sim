@@ -19,8 +19,8 @@ use crate::simulation::wire_types::population::Person;
 use crate::simulation::wire_types::vehicles::LevelOfDetail;
 
 pub struct Simulation<C>
-    where
-        C: SimCommunicator,
+where
+    C: SimCommunicator,
 {
     activity_q: TimeQueue<Person>,
     teleportation_q: TimeQueue<Vehicle>,
@@ -34,8 +34,8 @@ pub struct Simulation<C>
 }
 
 impl<C> Simulation<C>
-    where
-        C: SimCommunicator + 'static,
+where
+    C: SimCommunicator + 'static,
 {
     pub fn new(
         config: Config,
@@ -69,7 +69,7 @@ impl<C> Simulation<C>
         }
     }
 
-    //#[tracing::instrument(level = "info", skip(self), fields(rank = self.net_message_broker.rank()))]
+    #[tracing::instrument(level = "info", skip(self), fields(rank = self.net_message_broker.rank()))]
     pub fn run(&mut self) {
         // use fixed start and end times
         let mut now = self.start_time;
@@ -107,7 +107,7 @@ impl<C> Simulation<C>
         self.events.finish();
     }
 
-    //#[tracing::instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
+    #[tracing::instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
     fn wakeup(&mut self, now: u32) {
         let agents = self.activity_q.pop(now);
 
@@ -171,7 +171,7 @@ impl<C> Simulation<C>
         self.replanner.replan(now, agent, &self.garage)
     }
 
-    //#[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
+    #[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
     fn terminate_teleportation(&mut self, now: u32) {
         let teleportation_vehicles = self.teleportation_q.pop(now);
         for vehicle in teleportation_vehicles {
@@ -207,7 +207,7 @@ impl<C> Simulation<C>
         }
     }
 
-    //#[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
+    #[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
     fn move_nodes(&mut self, now: u32) {
         let exited_vehicles = self.network.move_nodes(&mut self.events, now);
 
@@ -233,7 +233,7 @@ impl<C> Simulation<C>
         }
     }
 
-    //#[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
+    #[instrument(level = "trace", skip(self), fields(rank = self.net_message_broker.rank()))]
     fn move_links(&mut self, now: u32) {
         let (vehicles, storage_cap_updates) = self.network.move_links(now);
 
