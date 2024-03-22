@@ -268,6 +268,8 @@ pub struct MetisOptions {
     pub imbalance_factor: f32,
     #[serde(default = "u32_value_100")]
     pub iteration_number: u32,
+    #[serde(default = "bool_value_true")]
+    pub contiguous: bool,
 }
 
 #[derive(PartialEq, Debug, ValueEnum, Clone, Copy, Serialize, Deserialize)]
@@ -291,6 +293,7 @@ impl Default for MetisOptions {
             edge_weight: EdgeWeight::Constant,
             imbalance_factor: 0.03,
             iteration_number: 10,
+            contiguous: true,
         }
     }
 }
@@ -323,6 +326,11 @@ impl MetisOptions {
         };
         val
     }
+
+    pub fn set_contiguous(mut self, contiguous: bool) -> Self {
+        self.contiguous = contiguous;
+        self
+    }
 }
 
 fn f32_value_0_03() -> f32 {
@@ -335,6 +343,10 @@ fn edge_weight_constant() -> EdgeWeight {
 
 fn u32_value_100() -> u32 {
     100
+}
+
+fn bool_value_true() -> bool {
+    true
 }
 
 fn default_vertex_weight() -> Vec<VertexWeight> {
@@ -364,6 +376,7 @@ mod tests {
                 edge_weight: EdgeWeight::Constant,
                 imbalance_factor: 1.02,
                 iteration_number: 100,
+                contiguous: true,
             }),
         };
         config
@@ -398,6 +411,7 @@ mod tests {
                 edge_weight: EdgeWeight::Constant,
                 imbalance_factor: 1.02,
                 iteration_number: 100,
+                contiguous: true,
             })
         );
     }
@@ -437,7 +451,8 @@ mod tests {
                 vertex_weight: vec![VertexWeight::InLinkCount],
                 edge_weight: EdgeWeight::Capacity,
                 imbalance_factor: 1.1,
-                iteration_number: 100
+                iteration_number: 100,
+                contiguous: true,
             })
         );
     }

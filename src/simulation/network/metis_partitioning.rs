@@ -49,6 +49,7 @@ pub fn partition(network: &Network, num_parts: u32, options: MetisOptions) -> Ve
     let mut graph = Graph::new(ncon, num_parts as Idx, &mut xadj, &mut adjncy)
         .set_option(metis::option::UFactor(options.ufactor() as Idx))
         .set_option(metis::option::Seed(4711))
+        .set_option(metis::option::Contig(options.contiguous))
         .set_adjwgt(&mut adjwgt);
 
     if !vwgt.is_empty() {
@@ -124,7 +125,7 @@ mod tests {
         let network = Network::from_file(
             "./assets/andorra-network.xml.gz",
             5,
-            PartitionMethod::Metis(MetisOptions::default()),
+            PartitionMethod::Metis(MetisOptions::default().set_contiguous(false)),
         );
         println!("=== Default ===");
         let _node_count = node_count(&network);
@@ -139,7 +140,8 @@ mod tests {
             PartitionMethod::Metis(
                 MetisOptions::default()
                     .add_vertex_weight(VertexWeight::InLinkCapacity)
-                    .set_imbalance_factor(0.),
+                    .set_imbalance_factor(0.)
+                    .set_contiguous(false),
             ),
         );
         println!("=== Capacity ===");
@@ -155,7 +157,8 @@ mod tests {
             PartitionMethod::Metis(
                 MetisOptions::default()
                     .add_vertex_weight(VertexWeight::InLinkCount)
-                    .set_imbalance_factor(0.),
+                    .set_imbalance_factor(0.)
+                    .set_contiguous(false),
             ),
         );
         println!("=== InLinkCount ===");
@@ -172,7 +175,8 @@ mod tests {
                 MetisOptions::default()
                     .add_vertex_weight(VertexWeight::InLinkCapacity)
                     .add_vertex_weight(VertexWeight::InLinkCount)
-                    .set_imbalance_factor(0.),
+                    .set_imbalance_factor(0.)
+                    .set_contiguous(false),
             ),
         );
         println!("=== Capacity & InLinkCount ===");
@@ -188,7 +192,8 @@ mod tests {
             PartitionMethod::Metis(
                 MetisOptions::default()
                     .add_vertex_weight(VertexWeight::Constant)
-                    .set_imbalance_factor(0.),
+                    .set_imbalance_factor(0.)
+                    .set_contiguous(false),
             ),
         );
         println!("=== Constant Vertex ===");
@@ -206,7 +211,8 @@ mod tests {
                     .add_vertex_weight(VertexWeight::Constant)
                     .add_vertex_weight(VertexWeight::InLinkCount)
                     .set_imbalance_factor(0.)
-                    .set_iteration_number(100),
+                    .set_iteration_number(100)
+                    .set_contiguous(false),
             ),
         );
         println!("=== Constant Vertex & InLinkCount ===");
