@@ -165,7 +165,7 @@ impl ReRouteTripReplanner {
         );
     }
 
-    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    // #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
     fn replan_access_egress(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
         let next_act = agent.next_act();
@@ -205,7 +205,7 @@ impl ReRouteTripReplanner {
         );
     }
 
-    #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
+    // #[tracing::instrument(level = "trace", skip(self, agent, garage), fields(rank = self.rank))]
     fn replan_teleported_main(&self, _now: u32, agent: &mut Person, garage: &Garage) {
         let curr_act = agent.curr_act();
         let next_act = agent.next_act();
