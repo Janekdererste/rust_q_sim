@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::thread::{sleep, JoinHandle};
@@ -126,15 +127,15 @@ fn execute_partition<C: SimCommunicator + 'static>(comm: C, args: &CommandLineAr
         population.persons.len()
     );
 
-    let mut events = EventsPublisher::new();
+    let events = Rc::new(RefCell::new(EventsPublisher::new()));
 
     if config.output().write_events == WriteEvents::Proto {
         let events_file = format!("events.{rank}.binpb");
         let events_path = output_path.join(events_file);
-        events.add_subscriber(Box::new(ProtoEventsWriter::new(&events_path)));
+        events.borrow_mut().add_subscriber(Box::new(ProtoEventsWriter::new(&events_path)));
     }
     let travel_time_collector = Box::new(TravelTimeCollector::new());
-    events.add_subscriber(travel_time_collector);
+    events.borrow_mut().add_subscriber(travel_time_collector);
 
     let rc = Rc::new(comm);
 

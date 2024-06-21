@@ -92,6 +92,20 @@ impl XmlEventsWriter {
                         e.distance,
                         Id::<String>::get(e.mode).external())
             }
+            Type::PassengerPickedUp(e) => {
+                format!("<event time=\"{time}\" type=\"passenger picked up\" person=\"{}\" mode=\"{}\" request=\"{}\" vehicle=\"{}\"/>\n",
+                        Id::<Person>::get(e.person).external(),
+                        Id::<String>::get(e.mode).external(),
+                        Id::<String>::get(e.request).external(),
+                        Id::<Vehicle>::get(e.vehicle).external())
+            }
+            Type::PassengerDroppedOff(e) => {
+                format!("<event time=\"{time}\" type=\"passenger dropped off\" person=\"{}\" mode=\"{}\" request=\"{}\" vehicle=\"{}\"/>\n",
+                        Id::<Person>::get(e.person).external(),
+                        Id::<String>::get(e.mode).external(),
+                        Id::<String>::get(e.request).external(),
+                        Id::<Vehicle>::get(e.vehicle).external())
+            }
         }
     }
 

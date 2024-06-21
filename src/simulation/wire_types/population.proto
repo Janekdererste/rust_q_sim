@@ -33,10 +33,21 @@ message Leg {
   optional uint32 dep_time = 3;
   uint32 trav_time = 4;
   Route route = 5;
+  map<string, AttributeValue> attributes = 6;
 }
 
 message Route {
   uint64 veh_id = 1;
   double distance = 2;
   repeated uint64 route = 3;
+}
+
+message AttributeValue {
+  oneof type {
+    uint64 int_value = 1;
+    string string_value = 2;
+    double double_value = 3;
+    bool bool_value = 4;
+    // to be expanded
+  }
 }

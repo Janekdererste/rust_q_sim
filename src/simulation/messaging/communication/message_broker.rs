@@ -359,6 +359,7 @@ mod tests {
             end_time: 0,
             sample_size: 0.0,
             stuck_threshold: 0,
+            passenger_modes: vec![],
         };
         let broker = NetMessageBroker::new(
             Rc::new(communicator),

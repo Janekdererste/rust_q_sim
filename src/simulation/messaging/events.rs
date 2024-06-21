@@ -5,13 +5,13 @@ use std::fmt::Debug;
 use tracing::{info, instrument};
 
 use crate::simulation::wire_types::events::event::Type::{
-    ActEnd, ActStart, Arrival, Departure, Generic, LinkEnter, LinkLeave, PersonEntersVeh,
-    PersonLeavesVeh, Travelled,
+    ActEnd, ActStart, Arrival, Departure, Generic, LinkEnter, LinkLeave, PassengerDroppedOff,
+    PassengerPickedUp, PersonEntersVeh, PersonLeavesVeh, Travelled,
 };
 use crate::simulation::wire_types::events::{
     ActivityEndEvent, ActivityStartEvent, ArrivalEvent, DepartureEvent, Event, GenericEvent,
-    LinkEnterEvent, LinkLeaveEvent, PersonEntersVehicleEvent, PersonLeavesVehicleEvent,
-    TravelledEvent,
+    LinkEnterEvent, LinkLeaveEvent, PassengerDroppedOffEvent, PassengerPickedUpEvent,
+    PersonEntersVehicleEvent, PersonLeavesVehicleEvent, TravelledEvent,
 };
 
 pub trait EventsSubscriber {
@@ -200,6 +200,28 @@ impl Event {
                 person,
                 distance,
                 mode,
+            })),
+        }
+    }
+
+    pub fn new_passenger_picked_up(person: u64, mode: u64, request: u64, vehicle: u64) -> Event {
+        Event {
+            r#type: Some(PassengerPickedUp(PassengerPickedUpEvent {
+                person,
+                mode,
+                request,
+                vehicle,
+            })),
+        }
+    }
+
+    pub fn new_passenger_dropped_off(person: u64, mode: u64, request: u64, vehicle: u64) -> Event {
+        Event {
+            r#type: Some(PassengerDroppedOff(PassengerDroppedOffEvent {
+                person,
+                mode,
+                request,
+                vehicle,
             })),
         }
     }

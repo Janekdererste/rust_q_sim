@@ -165,7 +165,7 @@ struct VehicleQEntry {
 }
 
 impl LocalLink {
-    pub fn from_link(link: &Link, effective_cell_size: f32, config: config::Simulation) -> Self {
+    pub fn from_link(link: &Link, effective_cell_size: f32, config: &config::Simulation) -> Self {
         LocalLink::new(
             link.id.clone(),
             link.capacity,
@@ -200,7 +200,7 @@ impl LocalLink {
         perm_lanes: f32,
         length: f64,
         effective_cell_size: f32,
-        config: config::Simulation,
+        config: &config::Simulation,
         from: Id<Node>,
         to: Id<Node>,
     ) -> Self {
@@ -392,7 +392,7 @@ mod sim_link_tests {
             3.,
             100.,
             7.5,
-            test_utils::config(),
+            &test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -414,7 +414,7 @@ mod sim_link_tests {
             3.,
             100.,
             7.5,
-            test_utils::config(),
+            &test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -445,7 +445,7 @@ mod sim_link_tests {
             3.,
             100.,
             7.5,
-            test_utils::config(),
+            &test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -485,7 +485,7 @@ mod sim_link_tests {
             3.,
             100.,
             7.5,
-            test_utils::config(),
+            &test_utils::config(),
             Id::new_internal(1),
             Id::new_internal(2),
         ));
@@ -515,7 +515,7 @@ mod sim_link_tests {
             1.,
             15.0,
             10.0,
-            test_utils::config(),
+            &test_utils::config(),
             Id::new_internal(0),
             Id::new_internal(0),
         ));
@@ -549,6 +549,7 @@ mod sim_link_tests {
             end_time: 0,
             sample_size: 1.0,
             stuck_threshold,
+            passenger_modes: vec![],
         };
         let mut link = SimLink::Local(LocalLink::new(
             Id::create("stuck-link"),
@@ -557,7 +558,7 @@ mod sim_link_tests {
             1.0,
             10.0,
             7.5,
-            config,
+            &config,
             Id::create("from-node"),
             Id::create("to-node"),
         ));
@@ -587,6 +588,7 @@ mod sim_link_tests {
             end_time: 0,
             sample_size: 1.0,
             stuck_threshold,
+            passenger_modes: vec![],
         };
         let mut link = SimLink::Local(LocalLink::new(
             Id::create("stuck-link"),
@@ -595,7 +597,7 @@ mod sim_link_tests {
             1.0,
             earliest_exit as f64,
             7.5,
-            config,
+            &config,
             Id::create("from-node"),
             Id::create("to-node"),
         ));

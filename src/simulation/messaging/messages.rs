@@ -126,6 +126,10 @@ impl Vehicle {
         self.driver.as_ref().unwrap()
     }
 
+    pub fn passengers(&self) -> &Vec<Person> {
+        &self.passengers
+    }
+
     pub fn id(&self) -> usize {
         self.id as usize
     }

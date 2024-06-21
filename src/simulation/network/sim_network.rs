@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use nohash_hasher::{IntMap, IntSet};
 use rand::rngs::ThreadRng;
@@ -68,7 +70,7 @@ impl SimNetworkPartition {
                         link,
                         partition,
                         global_network.effective_cell_size,
-                        config,
+                        &config,
                         global_network,
                     ),
                 )
@@ -96,7 +98,7 @@ impl SimNetworkPartition {
         link: &Link,
         partition: u32,
         effective_cell_size: f32,
-        config: config::Simulation,
+        config: &config::Simulation,
         global_network: &Network,
     ) -> SimLink {
         let from_part = global_network.get_node(&link.from).partition; //all_nodes.get(link.from.internal()).unwrap().partition;
@@ -151,6 +153,26 @@ impl SimNetworkPartition {
         self.active_links.len()
     }
 
+    pub fn active_agents(&mut self) -> Vec<&mut Person> {
+        // one has to iterate here over all links and filter then, because otherwise the borrow checker will complain
+        // something like self.active_links.map(|id| self.links.get(id)) borrows self mutably in FnMut closure
+
+        // self.links
+        //     .iter_mut()
+        //     .filter(|(id, link)| self.active_links.contains(id))
+        //     .map(|(_, link)| link)
+        //     .map(|link| match link {
+        //         SimLink::Local(ll) => ll,
+        //         SimLink::In(il) => &mut il.local_link,
+        //         SimLink::Out(ol) => todo!(),
+        //     })
+        //     .flat_map(|link| link.q.iter_mut())
+        //     .map(|v| &mut v.vehicle)
+        //     .flat_map(|v| v.passengers.iter_mut().chain(v.driver.iter_mut()))
+        //     .collect::<Vec<&mut Person>>()
+        vec![]
+    }
+
     pub fn veh_on_net(&self) -> usize {
         self.veh_counter
     }
@@ -175,7 +197,7 @@ impl SimNetworkPartition {
     pub fn send_veh_en_route(
         &mut self,
         vehicle: Vehicle,
-        events_publisher: Option<&mut EventsPublisher>,
+        events_publisher: Option<Rc<RefCell<EventsPublisher>>>,
         now: u32,
     ) {
         let link_id = vehicle.curr_link_id().unwrap_or_else(|| {
@@ -194,7 +216,7 @@ impl SimNetworkPartition {
         });
 
         if let Some(publisher) = events_publisher {
-            publisher.publish_event(
+            publisher.borrow_mut().publish_event(
                 now,
                 &Event::new_link_enter(link.id().internal(), vehicle.id),
             );

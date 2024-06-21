@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -100,9 +101,11 @@ pub fn execute_sim<C: SimCommunicator + 'static>(
     );
     let sim_net = SimNetworkPartition::from_network(&network, rank, config.simulation());
 
-    let mut events = EventsPublisher::new();
-    events.add_subscriber(test_subscriber);
-    events.add_subscriber(Box::new(TravelTimeCollector::new()));
+    let events = Rc::new(RefCell::new(EventsPublisher::new()));
+    events.borrow_mut().add_subscriber(test_subscriber);
+    events
+        .borrow_mut()
+        .add_subscriber(Box::new(TravelTimeCollector::new()));
 
     let rc = Rc::new(comm);
     let broker = NetMessageBroker::new(rc.clone(), &network, &sim_net);
@@ -143,18 +146,6 @@ fn try_join(mut handles: IntMap<u32, JoinHandle<()>>) {
             let handle = handles.remove(&i).unwrap();
             handle.join().expect("Error in a thread");
         }
-    }
-}
-
-struct EmptySubscriber {}
-
-impl EventsSubscriber for EmptySubscriber {
-    fn receive_event(&mut self, _time: u32, _event: &Event) {
-        // nothing.
-    }
-
-    fn as_any(&mut self) -> &mut dyn Any {
-        self
     }
 }
 

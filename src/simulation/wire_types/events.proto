@@ -18,6 +18,8 @@ message Event {
     DepartureEvent departure = 8;
     ArrivalEvent arrival = 9;
     TravelledEvent travelled = 10;
+    PassengerPickedUpEvent passengerPickedUp = 11;
+    PassengerDroppedOffEvent passengerDroppedOff = 12;
   }
 }
 
@@ -76,4 +78,18 @@ message TravelledEvent {
   uint64 person = 1;
   uint64 mode = 3;
   double distance = 2;
+}
+
+message PassengerPickedUpEvent{
+  uint64 person = 1;
+  uint64 mode = 2;
+  uint64 request = 3;
+  uint64 vehicle = 4;
+}
+
+message PassengerDroppedOffEvent{
+  uint64 person = 1;
+  uint64 mode = 2;
+  uint64 request = 3;
+  uint64 vehicle = 4;
 }

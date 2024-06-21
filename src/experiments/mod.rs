@@ -1,5 +1,6 @@
 mod concurrent_dispatch;
 mod concurrent_ping_pong;
+mod internal_interface;
 mod lifetimes_example;
 mod link_automat_with_adjacency_list;
 mod link_automat_with_references;
